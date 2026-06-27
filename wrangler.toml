@@ -1,0 +1,7 @@
+name = "openinterestlens"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "deploy"
+
+[[pages]]
+# Cloudflare Pages configuration
+# Custom domain: openinterestlens.melabuilt.ai
