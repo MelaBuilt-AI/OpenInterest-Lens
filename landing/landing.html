@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenInterest Lens — Real-Time Futures Market Structure API</title>
+<meta name="description" content="Developer-ready signals for futures positioning, roll pressure, and term structure. CFTC COT + CME data as clean, typed API responses.">
+<style>
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #1a2332;
+  --bg-card-hover: #1f2b3d;
+  --text-primary: #e8edf5;
+  --text-secondary: #8892a4;
+  --text-muted: #5a6478;
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #2563eb;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
+  --border: #1e2a3a;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  --font-sans: -apple-system, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* Nav */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10, 14, 23, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+nav .container { display: flex; justify-content: space-between; align-items: center; }
+.nav-brand { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+.nav-brand span { color: var(--accent-cyan); }
+.nav-links { display: flex; gap: 28px; align-items: center; }
+.nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+.nav-links a:hover { color: var(--text-primary); }
+.nav-cta { background: var(--accent-blue); color: white; padding: 8px 20px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: background 0.2s; }
+.nav-cta:hover { background: var(--accent-blue-hover); }
+
+/* Hero */
+.hero {
+  padding: 120px 0 80px;
+  text-align: center;
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+}
+.hero h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.1; margin-bottom: 20px; letter-spacing: -0.02em; }
+.hero h1 .gradient { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero p { font-size: 1.25rem; color: var(--text-secondary); max-width: 640px; margin: 0 auto 36px; }
+.hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.btn-primary { background: var(--accent-blue); color: white; padding: 14px 32px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 1rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+.btn-primary:hover { background: var(--accent-blue-hover); transform: translateY(-1px); }
+.btn-secondary { background: transparent; color: var(--text-primary); padding: 14px 32px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 1rem; border: 1px solid var(--border); transition: all 0.2s; }
+.btn-secondary:hover { border-color: var(--text-muted); background: var(--bg-secondary); }
+.hero-stats { display: flex; gap: 48px; justify-content: center; margin-top: 56px; }
+.hero-stat { text-align: center; }
+.hero-stat .num { font-size: 2rem; font-weight: 800; color: var(--accent-cyan); }
+.hero-stat .label { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+
+/* Features */
+.features { padding: 100px 0; }
+.section-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-cyan); font-weight: 600; margin-bottom: 12px; }
+.section-title { font-size: 2.5rem; font-weight: 800; margin-bottom: 16px; letter-spacing: -0.01em; }
+.section-subtitle { font-size: 1.1rem; color: var(--text-secondary); max-width: 600px; }
+.features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+.feature-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 32px; transition: all 0.25s;
+}
+.feature-card:hover { background: var(--bg-card-hover); border-color: var(--accent-blue); transform: translateY(-2px); }
+.feature-icon { font-size: 2rem; margin-bottom: 16px; }
+.feature-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; }
+.feature-card p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.55; }
+.feature-card .tag { display: inline-block; font-size: 0.75rem; padding: 3px 10px; border-radius: 20px; margin-top: 12px; font-weight: 600; }
+.tag-free { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+.tag-pro { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+.tag-enterprise { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); }
+
+/* API Explorer */
+.api-explorer { padding: 100px 0; background: var(--bg-secondary); }
+.code-block {
+  background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 24px; margin-top: 32px; overflow-x: auto; position: relative;
+}
+.code-block pre { font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.7; color: var(--text-primary); white-space: pre; }
+.code-block .comment { color: var(--text-muted); }
+.code-block .method { color: var(--accent-cyan); font-weight: 700; }
+.code-block .key { color: var(--accent-orange); }
+.code-block .string { color: var(--accent-green); }
+.code-block .url { color: var(--accent-blue); }
+.code-block .copy-btn {
+  position: absolute; top: 12px; right: 12px; background: var(--bg-secondary);
+  border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px;
+  border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s;
+}
+.code-block .copy-btn:hover { color: var(--text-primary); border-color: var(--text-muted); }
+
+.tabs { display: flex; gap: 0; margin-top: 24px; border-bottom: 1px solid var(--border); }
+.tab {
+  padding: 12px 24px; background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 0.9rem; font-weight: 600; border-bottom: 2px solid transparent; transition: all 0.2s;
+}
+.tab.active { color: var(--text-primary); border-bottom-color: var(--accent-blue); }
+.tab:hover { color: var(--text-secondary); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Quickstart */
+.quickstart { padding: 100px 0; }
+.quickstart-steps { display: grid; gap: 24px; margin-top: 48px; }
+.quickstart-step {
+  display: flex; gap: 20px; align-items: flex-start;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 24px; transition: all 0.2s;
+}
+.quickstart-step:hover { border-color: var(--accent-blue); }
+.step-num {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent-blue); color: white; display: flex; align-items: center;
+  justify-content: center; font-weight: 700; font-size: 0.9rem;
+}
+.step-content h4 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+.step-content p { font-size: 0.9rem; color: var(--text-secondary); }
+.step-content code { background: var(--bg-primary); padding: 2px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan); }
+
+/* Pricing */
+.pricing { padding: 100px 0; background: var(--bg-secondary); }
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+.pricing-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 36px; position: relative; transition: all 0.25s;
+}
+.pricing-card:hover { transform: translateY(-2px); }
+.pricing-card.featured { border-color: var(--accent-blue); box-shadow: 0 0 40px rgba(59, 130, 246, 0.1); }
+.pricing-card.featured::before {
+  content: 'Most Popular'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+  background: var(--accent-blue); color: white; font-size: 0.75rem; font-weight: 700;
+  padding: 4px 16px; border-radius: 20px;
+}
+.pricing-tier { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-cyan); font-weight: 700; }
+.pricing-price { font-size: 2.5rem; font-weight: 800; margin: 12px 0 4px; }
+.pricing-price .period { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
+.pricing-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 24px; }
+.pricing-features { list-style: none; }
+.pricing-features li { font-size: 0.9rem; padding: 8px 0; border-bottom: 1px solid var(--border); color: var(--text-secondary); display: flex; align-items: center; gap: 10px; }
+.pricing-features li:last-child { border-bottom: none; }
+.pricing-features li::before { content: '✓'; color: var(--accent-green); font-weight: 700; font-size: 0.85rem; }
+.pricing-features li.disabled { opacity: 0.4; }
+.pricing-features li.disabled::before { content: '—'; color: var(--text-muted); }
+.pricing-btn { display: block; text-align: center; margin-top: 24px; padding: 12px 24px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: all 0.2s; }
+.pricing-btn-primary { background: var(--accent-blue); color: white; }
+.pricing-btn-primary:hover { background: var(--accent-blue-hover); }
+.pricing-btn-secondary { background: transparent; color: var(--text-primary); border: 1px solid var(--border); }
+.pricing-btn-secondary:hover { border-color: var(--text-muted); }
+
+/* Footer */
+footer { padding: 60px 0 36px; border-top: 1px solid var(--border); }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+.footer-brand p { font-size: 0.9rem; color: var(--text-muted); margin-top: 12px; max-width: 300px; line-height: 1.6; }
+.footer-col h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 16px; font-weight: 700; }
+.footer-col a { display: block; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; padding: 4px 0; transition: color 0.2s; }
+.footer-col a:hover { color: var(--text-primary); }
+.footer-bottom { border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2.2rem; }
+  .hero p { font-size: 1rem; }
+  .hero-stats { gap: 24px; flex-wrap: wrap; }
+  .features-grid, .pricing-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .nav-links { display: none; }
+  .hero-actions { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="/" class="nav-brand">Open<span>Interest</span> Lens</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#api">API</a>
+      <a href="#quickstart">Quickstart</a>
+      <a href="#pricing">Pricing</a>
+      <a href="/docs" class="nav-cta">Get API Key</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero" id="hero">
+  <div class="container">
+    <h1>Futures Intelligence,<br><span class="gradient">Developer-Ready</span></h1>
+    <p>Real-time COT positioning, roll pressure, and term structure signals — as clean, typed API responses. No scraping, no parsing, no headaches.</p>
+    <div class="hero-actions">
+      <a href="#quickstart" class="btn-primary">Get Started Free →</a>
+      <a href="#api" class="btn-secondary">View API Reference</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">5</div><div class="label">Signal Types</div></div>
+      <div class="hero-stat"><div class="num">50+</div><div class="label">Contracts</div></div>
+      <div class="hero-stat"><div class="num">&lt;100ms</div><div class="label">Response Time</div></div>
+      <div class="hero-stat"><div class="num">99.9%</div><div class="label">Uptime</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-label">Signal Types</div>
+    <h2 class="section-title">Five Signals, One API</h2>
+    <p class="section-subtitle">Every signal type you need to understand futures market structure, computed from CFTC and CME data.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Positioning Signals</h3>
+        <p>Smart money vs. retail Z-scores from COT data. Commercial, non-commercial, and non-reportable net positioning with 52-week percentile rankings.</p>
+        <span class="tag tag-free">Free</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔄</div>
+        <h3>Roll Pressure Index</h3>
+        <p>OI decay, spread basis, and roll urgency scoring. Know exactly when the roll window opens and how much pressure is building.</p>
+        <span class="tag tag-pro">Pro</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📈</div>
+        <h3>Term Structure</h3>
+        <p>Full forward curve with contango/backwardation detection, slope metrics, and calendar spread ratios. See the curve at a glance.</p>
+        <span class="tag tag-pro">Pro</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔔</div>
+        <h3>Contango/Backwardation Alerts</h3>
+        <p>Real-time detection of structural shifts between contango and backwardation with magnitude scoring and historical context.</p>
+        <span class="tag tag-enterprise">Enterprise</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📡</div>
+        <h3>WebSocket Streaming</h3>
+        <p>Live signal updates via WebSocket. Subscribe to contracts and receive positioning, roll pressure, and term structure updates in real-time.</p>
+        <span class="tag tag-pro">Pro</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Data Quality Monitoring</h3>
+        <p>Freshness, completeness, and anomaly scores per contract. Trust the data or know why you shouldn't.</p>
+        <span class="tag tag-free">Free</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="api-explorer" id="api">
+  <div class="container">
+    <div class="section-label">API Reference</div>
+    <h2 class="section-title">Clean Responses, Zero Parsing</h2>
+    <p class="section-subtitle">Typed JSON responses with computed metrics — Z-scores, percentiles, and directional signals ready to consume.</p>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('tab-positioning')">Positioning</button>
+      <button class="tab" onclick="showTab('tab-roll')">Roll Pressure</button>
+      <button class="tab" onclick="showTab('tab-term')">Term Structure</button>
+      <button class="tab" onclick="showTab('tab-quality')">Quality</button>
+    </div>
+    <div id="tab-positioning" class="tab-content active">
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Get positioning signal for E-mini S&P 500</span>
+<span class="method">GET</span> <span class="url">/v1/signals/positioning/ES</span>
+<span class="key">X-API-Key</span>: <span class="string">oil_sk_live_...</span>
+
+<span class="comment"># Response</span>
+{
+  <span class="key">"commodity"</span>: <span class="string">"ES"</span>,
+  <span class="key">"smart_money"</span>: {
+    <span class="key">"direction"</span>: <span class="string">"bullish"</span>,
+    <span class="key">"z_score"</span>: <span class="string">2.34</span>,
+    <span class="key">"percentile"</span>: <span class="string">98.1</span>,
+    <span class="key">"net_position"</span>: <span class="string">-42520</span>
+  },
+  <span class="key">"composite"</span>: {
+    <span class="key">"direction"</span>: <span class="string">"bullish"</span>,
+    <span class="key">"strength"</span>: <span class="string">0.87</span>,
+    <span class="key">"confidence"</span>: <span class="string">"high"</span>
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="tab-roll" class="tab-content">
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Get roll pressure for Crude Oil</span>
+<span class="method">GET</span> <span class="url">/v1/roll-pressure/CL</span>
+<span class="key">X-API-Key</span>: <span class="string">oil_sk_live_...</span>
+
+<span class="comment"># Response</span>
+{
+  <span class="key">"contract"</span>: <span class="string">"CL"</span>,
+  <span class="key">"roll_pressure"</span>: {
+    <span class="key">"index"</span>: <span class="string">0.72</span>,
+    <span class="key">"oi_decay_pct"</span>: <span class="string">-12.4</span>,
+    <span class="key">"spread_basis"</span>: <span class="string">-0.38</span>,
+    <span class="key">"days_to_expiry"</span>: <span class="string">8</span>
+  },
+  <span class="key">"roll_calendar"</span>: {
+    <span class="key">"days_to_roll"</span>: <span class="string">8</span>,
+    <span class="key">"roll_urgency"</span>: <span class="string">"high"</span>
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="tab-term" class="tab-content">
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Get term structure for Gold</span>
+<span class="method">GET</span> <span class="url">/v1/term-structure/GC</span>
+<span class="key">X-API-Key</span>: <span class="string">oil_sk_live_...</span>
+
+<span class="comment"># Response</span>
+{
+  <span class="key">"contract"</span>: <span class="string">"GC"</span>,
+  <span class="key">"term_structure"</span>: {
+    <span class="key">"structure_type"</span>: <span class="string">"contango"</span>,
+    <span class="key">"months"</span>: [
+      { <span class="key">"month"</span>: <span class="string">"Jun25"</span>, <span class="key">"settlement"</span>: <span class="string">2341.5</span>, <span class="key">"open_interest"</span>: <span class="string">312400</span> }
+    ]
+  },
+  <span class="key">"slope_metrics"</span>: {
+    <span class="key">"front_3m_ann_yield"</span>: <span class="string">4.2</span>,
+    <span class="key">"full_curve_ann_yield"</span>: <span class="string">6.8</span>
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="tab-quality" class="tab-content">
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Get data quality scores</span>
+<span class="method">GET</span> <span class="url">/v1/quality</span>
+<span class="key">X-API-Key</span>: <span class="string">oil_sk_live_...</span>
+
+<span class="comment"># Response</span>
+{
+  <span class="key">"contracts"</span>: [
+    {
+      <span class="key">"symbol"</span>: <span class="string">"ES"</span>,
+      <span class="key">"quality_score"</span>: <span class="string">0.95</span>,
+      <span class="key">"freshness"</span>: { <span class="key">"last_update"</span>: <span class="string">"2026-05-14"</span>, <span class="key">"stale"</span>: <span class="string">false</span> },
+      <span class="key">"completeness"</span>: { <span class="key">"pct"</span>: <span class="string">0.98</span> }
+    }
+  ]
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="quickstart" id="quickstart">
+  <div class="container">
+    <div class="section-label">Quickstart</div>
+    <h2 class="section-title">Up and Running in 60 Seconds</h2>
+    <div class="quickstart-steps">
+      <div class="quickstart-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Install the SDK</h4>
+          <p><code>pip install openinterest-lens</code></p>
+        </div>
+      </div>
+      <div class="quickstart-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Get your API key</h4>
+          <p>Sign up at <code>openinterestlens.com</code> — free tier includes ES, NQ, CL positioning signals.</p>
+        </div>
+      </div>
+      <div class="quickstart-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>First API call</h4>
+          <p>Set <code>OIL_API_KEY=oil_sk_live_...</code> then call <code>client.signals.positioning("ES")</code></p>
+        </div>
+      </div>
+      <div class="quickstart-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Stream live updates</h4>
+          <p>Connect to <code>wss://api.openinterestlens.com/ws/v1/signals</code> for real-time WebSocket feeds.</p>
+        </div>
+      </div>
+      <div class="quickstart-step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Go build</h4>
+          <p>Integrate signals into your trading models, dashboards, or alerts. Check the <a href="/docs/sdk-guide" style="color: var(--accent-cyan);">SDK guide</a> for advanced usage.</p>
+        </div>
+      </div>
+    </div>
+    <div class="code-block" style="margin-top: 32px;">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="comment"># 5 lines to your first signal</span>
+<span class="key">from</span> openinterest_lens <span class="key">import</span> OILClient
+
+client = OILClient(api_key=<span class="string">"oil_sk_live_..."</span>)
+signal = client.signals.positioning(<span class="string">"ES"</span>)
+<span class="key">print</span>(f<span class="string">"Smart money: {signal.smart_money.direction} (z={signal.smart_money.z_score})"</span>)
+<span class="comment"># → Smart money: bullish (z=2.34)</span></pre>
+    </div>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="section-label">Pricing</div>
+    <h2 class="section-title">Start Free, Scale When Ready</h2>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-tier">Free</div>
+        <div class="pricing-price">$0<span class="period">/mo</span></div>
+        <div class="pricing-desc">Explore and prototype with core signals.</div>
+        <ul class="pricing-features">
+          <li>ES, NQ, CL positioning signals</li>
+          <li>60 requests/hour</li>
+          <li>4 weeks historical data</li>
+          <li>Data quality endpoint</li>
+          <li class="disabled">Roll pressure</li>
+          <li class="disabled">Term structure</li>
+          <li class="disabled">WebSocket streaming</li>
+          <li class="disabled">Priority support</li>
+        </ul>
+        <a href="#" class="pricing-btn pricing-btn-secondary">Get Started</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-tier">Pro</div>
+        <div class="pricing-price">$49<span class="period">/mo</span></div>
+        <div class="pricing-desc">Full signal coverage for serious traders.</div>
+        <ul class="pricing-features">
+          <li>All 50+ contracts</li>
+          <li>600 requests/hour</li>
+          <li>2 years historical data</li>
+          <li>Roll pressure + term structure</li>
+          <li>WebSocket streaming</li>
+          <li>Contango/backwardation alerts</li>
+          <li class="disabled">Priority support</li>
+          <li class="disabled">Custom data exports</li>
+        </ul>
+        <a href="#" class="pricing-btn pricing-btn-primary">Start Pro Trial</a>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-tier">Enterprise</div>
+        <div class="pricing-price">Custom</div>
+        <div class="pricing-desc">Dedicated infrastructure and support.</div>
+        <ul class="pricing-features">
+          <li>Unlimited contracts</li>
+          <li>6,000 requests/hour</li>
+          <li>5 years historical data</li>
+          <li>All signal types</li>
+          <li>Priority WebSocket feeds</li>
+          <li>Custom data exports</li>
+          <li>Dedicated support</li>
+          <li>SLA guarantees</li>
+        </ul>
+        <a href="#" class="pricing-btn pricing-btn-secondary">Contact Sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="/" class="nav-brand">Open<span>Interest</span> Lens</a>
+        <p>Real-time futures market structure signals, developer-ready. Built by traders, for developers.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#api">API Reference</a>
+        <a href="/docs/quickstart">Quickstart</a>
+      </div>
+      <div class="footer-col">
+        <h4>Developers</h4>
+        <a href="/docs/api-reference">API Reference</a>
+        <a href="/docs/sdk-guide">Python SDK</a>
+        <a href="/docs/deployment">Deployment</a>
+        <a href="/docs">All Docs</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Blog</a>
+        <a href="#">Status</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 OpenInterest Lens. All rights reserved.</span>
+      <span>Made with 🐺 by Mela AI</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+function showTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function copyCode(btn) {
+  const pre = btn.parentElement.querySelector('pre');
+  const text = pre.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  });
+}
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+</script>
+</body>
+</html>

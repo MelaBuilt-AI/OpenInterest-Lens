@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TermStructureCurve",
+  "type": "object",
+  "required": ["contract", "timestamp", "as_of_date", "months"],
+  "properties": {
+    "contract": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "as_of_date": { "type": "string", "format": "date" },
+    "structure_type": {
+      "type": "string",
+      "enum": ["contango", "backwardation", "mixed", "flat"]
+    },
+    "months": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["month", "settlement", "open_interest", "volume"],
+        "properties": {
+          "month": { "type": "string", "description": "e.g. 'Jun 26'" },
+          "expiry_date": { "type": "string", "format": "date" },
+          "settlement": { "type": "number" },
+          "open_interest": { "type": "integer" },
+          "volume": { "type": "integer" },
+          "spread_to_front": { "type": "number", "description": "Price difference from front month" },
+          "annualized_yield": { "type": "number", "description": "Annualized % vs front month" }
+        }
+      }
+    },
+    "curve_metrics": {
+      "type": "object",
+      "properties": {
+        "front_month_oi": { "type": "integer" },
+        "total_oi": { "type": "integer" },
+        "oi_concentration_pct": { "type": "number", "description": "Front month OI as % of total" },
+        "avg_daily_volume": { "type": "integer" },
+        "steepness": { "type": "number", "description": "Curve steepness metric (slope)" }
+      }
+    }
+  }
+}

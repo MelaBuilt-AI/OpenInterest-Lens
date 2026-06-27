@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RollPressureIndex",
+  "type": "object",
+  "required": ["contract", "timestamp", "nearby", "deferred", "roll_pressure"],
+  "properties": {
+    "contract": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "nearby": {
+      "type": "object",
+      "properties": {
+        "month": { "type": "string", "description": "e.g. 'Jun 26'" },
+        "open_interest": { "type": "integer" },
+        "volume": { "type": "integer" },
+        "settlement_price": { "type": "number" }
+      }
+    },
+    "deferred": {
+      "type": "object",
+      "properties": {
+        "month": { "type": "string" },
+        "open_interest": { "type": "integer" },
+        "volume": { "type": "integer" },
+        "settlement_price": { "type": "number" }
+      }
+    },
+    "roll_pressure": {
+      "type": "object",
+      "properties": {
+        "index": { "type": "number", "description": "0-100 roll pressure score (higher = more pressure to roll)" },
+        "oi_decay_pct": { "type": "number", "description": "Nearby OI decline as % of total OI in last 5 sessions" },
+        "spread_basis": { "type": "number", "description": "Deferred - nearby price spread (positive = contango)" },
+        "days_to_expiry": { "type": "integer" },
+        "roll_window": { "type": "string", "enum": ["pre_roll", "active_roll", "post_roll"], "description": "Phase of the roll cycle" }
+      }
+    }
+  }
+}

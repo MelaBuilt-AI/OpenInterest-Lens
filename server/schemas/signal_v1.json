@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PositioningSignal",
+  "type": "object",
+  "required": ["contract", "timestamp", "net_position", "smart_money", "retail", "signal"],
+  "properties": {
+    "contract": {
+      "type": "string",
+      "description": "Root symbol, e.g. 'ES'",
+      "examples": ["ES", "NQ", "CL", "GC"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "COT report reference date (Tuesday as-of)"
+    },
+    "as_of_friday": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the COT report was published (Friday)"
+    },
+    "net_position": {
+      "type": "object",
+      "properties": {
+        "commercial": { "type": "integer", "description": "Net long contracts (commercial hedgers)" },
+        "non_commercial": { "type": "integer", "description": "Net long contracts (managed money / specs)" },
+        "non_reportable": { "type": "integer", "description": "Net long contracts (small traders / retail)" }
+      }
+    },
+    "smart_money": {
+      "type": "object",
+      "properties": {
+        "z_score": { "type": "number", "description": "Z-score of commercial net position vs 52-week range" },
+        "percentile": { "type": "number", "description": "Percentile rank of current position (0-100)" },
+        "direction": { "type": "string", "enum": ["long", "short", "neutral"], "description": "Net direction of commercial positioning" },
+        "conviction": { "type": "string", "enum": ["low", "medium", "high"], "description": "Position extremity classification" }
+      }
+    },
+    "retail": {
+      "type": "object",
+      "properties": {
+        "z_score": { "type": "number", "description": "Z-score of non-reportable net position" },
+        "percentile": { "type": "number", "description": "Percentile rank (0-100)" },
+        "direction": { "type": "string", "enum": ["long", "short", "neutral"] },
+        "contrarian_signal": { "type": "string", "enum": ["fade_long", "fade_short", "none"], "description": "Contrarian fade signal based on extreme retail positioning" }
+      }
+    },
+    "signal": {
+      "type": "object",
+      "properties": {
+        "overall": { "type": "string", "enum": ["bullish", "bearish", "neutral"], "description": "Composite signal from smart money vs retail divergence" },
+        "strength": { "type": "number", "minimum": 0, "maximum": 1, "description": "Signal confidence (0=weak, 1=strong)" },
+        "divergence": { "type": "boolean", "description": "True when smart money and retail are on opposite sides" }
+      }
+    },
+    "week_over_week_change": {
+      "type": "object",
+      "properties": {
+        "commercial": { "type": "integer" },
+        "non_commercial": { "type": "integer" },
+        "non_reportable": { "type": "integer" }
+      },
+      "description": "Change in net positions from prior week"
+    }
+  }
+}

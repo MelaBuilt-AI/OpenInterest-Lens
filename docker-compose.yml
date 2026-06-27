@@ -1,0 +1,98 @@
+version: "3.9"
+
+services:
+  # ── API Server ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oil-api
+    restart: unless-stopped
+    ports:
+      - "${OIL_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      OIL_DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-oil}:${POSTGRES_PASSWORD:-oil}@timescaledb:5432/${POSTGRES_DB:-openinterest_lens}"
+      OIL_REDIS_URL: "redis://redis:6379/0"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - oil-internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r=httpx.get('http://localhost:8000/v1/health'); raise SystemExit(0) if r.status_code==200 else SystemExit(1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ── Scheduler / Ingestion Worker ──────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oil-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      OIL_DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-oil}:${POSTGRES_PASSWORD:-oil}@timescaledb:5432/${POSTGRES_DB:-openinterest_lens}"
+      OIL_REDIS_URL: "redis://redis:6379/0"
+      OIL_WORKER_MODE: "true"
+    command: ["python", "-m", "app.ingestion.scheduler"]
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - oil-internal
+
+  # ── TimescaleDB ───────────────────────────────────────────────────────────
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: oil-timescaledb
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-oil}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-oil}"
+      POSTGRES_DB: "${POSTGRES_DB:-openinterest_lens}"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    networks:
+      - oil-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oil} -d ${POSTGRES_DB:-openinterest_lens}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: oil-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - oil-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  oil-internal:
+    driver: bridge
+
+volumes:
+  timescaledb_data:
+  redis_data:
