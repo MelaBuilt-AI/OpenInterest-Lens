@@ -6,7 +6,8 @@ understand the response format without making live queries.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends
 
 from app.dependencies import require_api_key
@@ -61,12 +62,12 @@ async def get_examples(
                                     "commodity": "ES",
                                     "lookback_weeks": 52,
                                     "data_points": 52,
-                                    "computed_at": datetime.now(timezone.utc).isoformat(),
+                                    "computed_at": datetime.now(UTC).isoformat(),
                                     "cache_hit": False,
                                 },
                             }
                         ],
-                        "computed_at": datetime.now(timezone.utc).isoformat(),
+                        "computed_at": datetime.now(UTC).isoformat(),
                     },
                 },
                 "single_commodity": {
@@ -99,7 +100,7 @@ async def get_examples(
                             "commodity": "CL",
                             "lookback_weeks": 52,
                             "data_points": 52,
-                            "computed_at": datetime.now(timezone.utc).isoformat(),
+                            "computed_at": datetime.now(UTC).isoformat(),
                             "cache_hit": False,
                         },
                     },
@@ -257,7 +258,7 @@ async def get_examples(
                         "contract": "Optional specific contract symbol",
                     },
                     "example_response": {
-                        "generated_at": datetime.now(timezone.utc).isoformat(),
+                        "generated_at": datetime.now(UTC).isoformat(),
                         "contracts": ["ES", "NQ", "CL", "GC"],
                         "overall_health": "healthy",
                         "cot_staleness": [

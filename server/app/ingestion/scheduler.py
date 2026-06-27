@@ -10,9 +10,9 @@ Configurable intervals via environment variables.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import structlog
 
@@ -45,7 +45,7 @@ class IngestionRun:
 
     source: str  # "cot" or "settlements"
     started_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     status: str = "running"  # running, success, partial, failed
     records_ingested: int = 0
     records_skipped: int = 0
@@ -56,14 +56,14 @@ class IngestionRun:
 class SchedulerState:
     """Mutable scheduler state tracking runs and timing."""
 
-    started_at: Optional[datetime] = None
-    cot_last_run: Optional[datetime] = None
-    cot_last_result: Optional[IngestionRun] = None
-    settlement_last_run: Optional[datetime] = None
-    settlement_last_result: Optional[IngestionRun] = None
+    started_at: datetime | None = None
+    cot_last_run: datetime | None = None
+    cot_last_result: IngestionRun | None = None
+    settlement_last_run: datetime | None = None
+    settlement_last_result: IngestionRun | None = None
     is_running: bool = False
-    cot_task: Optional[asyncio.Task] = None
-    settlement_task: Optional[asyncio.Task] = None
+    cot_task: asyncio.Task | None = None
+    settlement_task: asyncio.Task | None = None
 
 
 class IngestionScheduler:
@@ -86,8 +86,8 @@ class IngestionScheduler:
         self.settlement_interval = settlement_interval
         self.state = SchedulerState()
         self._shutdown = False
-        self._cot_periodic_task: Optional[asyncio.Task] = None
-        self._settlement_periodic_task: Optional[asyncio.Task] = None
+        self._cot_periodic_task: asyncio.Task | None = None
+        self._settlement_periodic_task: asyncio.Task | None = None
 
         if auto_start:
             self.start()
@@ -99,7 +99,7 @@ class IngestionScheduler:
             return
 
         self._shutdown = False
-        self.state.started_at = datetime.now(timezone.utc)
+        self.state.started_at = datetime.now(UTC)
         self.state.is_running = True
 
         # Launch periodic tasks
@@ -121,10 +121,8 @@ class IngestionScheduler:
         for task in (self._cot_periodic_task, self._settlement_periodic_task):
             if task and not task.done():
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
 
         logger.info("scheduler_stopped")
 
@@ -137,7 +135,7 @@ class IngestionScheduler:
 
         Returns the IngestionRun record with results.
         """
-        run = IngestionRun(source="cot", started_at=datetime.now(timezone.utc))
+        run = IngestionRun(source="cot", started_at=datetime.now(UTC))
 
         logger.info("cot_ingestion_triggered")
         try:
@@ -151,7 +149,7 @@ class IngestionScheduler:
             run.errors = [str(e)]
             logger.error("cot_ingestion_error", error=str(e), exc_info=True)
 
-        run.completed_at = datetime.now(timezone.utc)
+        run.completed_at = datetime.now(UTC)
         self.state.cot_last_run = run.started_at
         self.state.cot_last_result = run
 
@@ -165,7 +163,7 @@ class IngestionScheduler:
 
         return run
 
-    async def trigger_settlement_ingestion(self, symbols: Optional[list[str]] = None) -> IngestionRun:
+    async def trigger_settlement_ingestion(self, symbols: list[str] | None = None) -> IngestionRun:
         """Manually trigger a settlement data fetch.
 
         Args:
@@ -173,7 +171,7 @@ class IngestionScheduler:
 
         Returns the IngestionRun record with results.
         """
-        run = IngestionRun(source="settlements", started_at=datetime.now(timezone.utc))
+        run = IngestionRun(source="settlements", started_at=datetime.now(UTC))
 
         logger.info("settlement_ingestion_triggered", symbols=symbols)
         try:
@@ -187,7 +185,7 @@ class IngestionScheduler:
             run.errors = [str(e)]
             logger.error("settlement_ingestion_error", error=str(e), exc_info=True)
 
-        run.completed_at = datetime.now(timezone.utc)
+        run.completed_at = datetime.now(UTC)
         self.state.settlement_last_run = run.started_at
         self.state.settlement_last_result = run
 
@@ -215,7 +213,7 @@ class IngestionScheduler:
             try:
                 # Calculate time until next scheduled run
                 next_run = self._next_cot_run_time()
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 delay = (next_run - now).total_seconds()
 
                 if delay > 0:
@@ -244,7 +242,7 @@ class IngestionScheduler:
         while not self._shutdown:
             try:
                 next_run = self._next_settlement_run_time()
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 delay = (next_run - now).total_seconds()
 
                 if delay > 0:
@@ -263,7 +261,7 @@ class IngestionScheduler:
 
     def _next_cot_run_time(self) -> datetime:
         """Calculate the next COT run time (Friday 8 PM ET = Saturday 00:00 UTC)."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # Find next Saturday 00:00 UTC (which is Friday 8 PM ET)
         days_until_saturday = (COT_DAY_OF_WEEK + 1 - now.weekday()) % 7
         if days_until_saturday == 0 and now.hour >= COT_HOUR_UTC:
@@ -274,7 +272,7 @@ class IngestionScheduler:
 
     def _next_settlement_run_time(self) -> datetime:
         """Calculate the next settlement run time (daily 5:30 PM ET = 21:30 UTC)."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         target = now.replace(hour=SETTLEMENT_HOUR_UTC, minute=SETTLEMENT_MINUTE_UTC, second=0, microsecond=0)
 
         # If we've already passed today's time, schedule for tomorrow
@@ -289,7 +287,7 @@ class IngestionScheduler:
 
     def get_status(self) -> dict:
         """Get current scheduler status for the API."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         uptime = (now - self.state.started_at).total_seconds() if self.state.started_at else 0
 
         return {
@@ -319,7 +317,7 @@ class IngestionScheduler:
 # Global scheduler instance
 # ---------------------------------------------------------------------------
 
-_scheduler: Optional[IngestionScheduler] = None
+_scheduler: IngestionScheduler | None = None
 
 
 def get_scheduler() -> IngestionScheduler:

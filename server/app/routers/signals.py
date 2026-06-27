@@ -9,8 +9,7 @@ Endpoints:
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -25,7 +24,7 @@ from app.models.signal import (
     PositioningSignalResponse,
 )
 from app.services.signal_cache import get_signal_cache
-from app.signals.positioning import compute_positioning_signal, compute_positioning_signals_multi
+from app.signals.positioning import compute_positioning_signal
 
 logger = structlog.get_logger(__name__)
 
@@ -40,7 +39,7 @@ router = APIRouter(prefix="/signals", tags=["signals"])
 @router.get("/positioning", response_model=MultiCommoditySignalResponse)
 async def get_positioning_signals(
     lookback_weeks: int = Query(52, ge=4, le=260, description="Lookback window in weeks for Z-scores"),
-    commodity: Optional[str] = Query(None, description="Filter to a single commodity symbol"),
+    commodity: str | None = Query(None, description="Filter to a single commodity symbol"),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
 ):
@@ -108,7 +107,7 @@ async def get_positioning_signals(
 
     return MultiCommoditySignalResponse(
         signals=all_results,
-        computed_at=datetime.now(timezone.utc),
+        computed_at=datetime.now(UTC),
     )
 
 
@@ -173,17 +172,17 @@ async def get_positioning_signal_for_commodity(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"error": "not_found", "message": f"Contract '{commodity}' is not tracked."},
-            )
+            ) from e
         elif "No COT data" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={"error": "data_unavailable", "message": f"No COT data available for '{commodity}'. Ingest data first."},
-            )
+            ) from e
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"error": "signal_error", "message": error_msg},
-            )
+            ) from e
 
     # Cache the result
     cache.set(cache_key, response)

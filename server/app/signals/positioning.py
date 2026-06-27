@@ -7,9 +7,7 @@ Each signal returns a value, confidence score, direction, and metadata.
 
 from __future__ import annotations
 
-import math
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import select
@@ -28,8 +26,6 @@ from app.models.signal import (
     TraderPositionBreakdown,
 )
 from app.signals.historical import (
-    compute_lookback_window,
-    compute_net_positions,
     detect_extreme_positioning,
     detect_mean_reversion,
     percentile_rank,
@@ -170,9 +166,7 @@ def compute_composite_signal(
 
     # Detect divergence: smart money and retail on opposite sides
     divergence = False
-    if sm_direction == "long" and retail_direction == "short":
-        divergence = True
-    elif sm_direction == "short" and retail_direction == "long":
+    if sm_direction == "long" and retail_direction == "short" or sm_direction == "short" and retail_direction == "long":
         divergence = True
 
     # Determine overall direction
@@ -326,7 +320,7 @@ async def compute_positioning_signal(
     # Build positioning signal
     positioning_signal = PositioningSignal(
         contract=contract_symbol,
-        timestamp=latest.as_of_date if isinstance(latest.as_of_date, datetime) else datetime.combine(latest.as_of_date, datetime.min.time(), tzinfo=timezone.utc),
+        timestamp=latest.as_of_date if isinstance(latest.as_of_date, datetime) else datetime.combine(latest.as_of_date, datetime.min.time(), tzinfo=UTC),
         as_of_friday=latest.published_date.date() if isinstance(latest.published_date, datetime) else latest.published_date,
         net_position=net_position,
         smart_money=smart_money,
@@ -337,12 +331,12 @@ async def compute_positioning_signal(
 
     # Build positioning breakdown with Z-scores per trader category
     # Compute Z-scores for long/short/net per category
-    commercial_longs = [float(r.commercial_long) for r in windowed]
-    commercial_shorts = [float(r.commercial_short) for r in windowed]
-    nc_longs = [float(r.non_commercial_long) for r in windowed]
-    nc_shorts = [float(r.non_commercial_short) for r in windowed]
-    nr_longs = [float(r.non_reportable_long) for r in windowed]
-    nr_shorts = [float(r.non_reportable_short) for r in windowed]
+    [float(r.commercial_long) for r in windowed]
+    [float(r.commercial_short) for r in windowed]
+    [float(r.non_commercial_long) for r in windowed]
+    [float(r.non_commercial_short) for r in windowed]
+    [float(r.non_reportable_long) for r in windowed]
+    [float(r.non_reportable_short) for r in windowed]
 
     breakdown = PositioningBreakdown(
         commercial=TraderPositionBreakdown(
@@ -377,7 +371,7 @@ async def compute_positioning_signal(
         lookback_weeks=min(lookback_weeks, len(windowed)),
         data_points=len(windowed),
         as_of_date=latest.as_of_date.date() if isinstance(latest.as_of_date, datetime) else latest.as_of_date,
-        computed_at=datetime.now(timezone.utc),
+        computed_at=datetime.now(UTC),
         cache_hit=False,
     )
 

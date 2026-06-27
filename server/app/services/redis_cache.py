@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import date, datetime, timezone
-from typing import Any, Optional
+from datetime import date, datetime
 
 import structlog
 
@@ -48,7 +47,7 @@ class RedisCacheService:
     def make_key(
         signal_type: str,
         contract: str,
-        as_of_date: Optional[date] = None,
+        as_of_date: date | None = None,
     ) -> str:
         """Generate a cache key.
 
@@ -63,7 +62,7 @@ class RedisCacheService:
         date_str = as_of_date.isoformat() if as_of_date else "latest"
         return f"oil:{signal_type}:{contract}:{date_str}"
 
-    async def get(self, key: str) -> Optional[dict]:
+    async def get(self, key: str) -> dict | None:
         """Get a cached response by key.
 
         Returns None on cache miss. Returns parsed dict on cache hit.
@@ -93,7 +92,7 @@ class RedisCacheService:
         self,
         key: str,
         value: dict,
-        ttl_seconds: Optional[int] = None,
+        ttl_seconds: int | None = None,
     ) -> None:
         """Store a response in cache.
 
@@ -145,7 +144,7 @@ class RedisCacheService:
 
         return found
 
-    async def invalidate(self, contract: Optional[str] = None) -> int:
+    async def invalidate(self, contract: str | None = None) -> int:
         """Invalidate cache entries.
 
         Args:
@@ -213,7 +212,7 @@ class RedisCacheService:
 # Module-level singleton
 # ---------------------------------------------------------------------------
 
-_cache_service: Optional[RedisCacheService] = None
+_cache_service: RedisCacheService | None = None
 
 
 def get_cache_service(redis=None) -> RedisCacheService:
@@ -239,7 +238,7 @@ def reset_cache_service() -> None:
     _cache_service = None
 
 
-def cache_headers(hit: bool, age_seconds: Optional[int] = None) -> dict[str, str]:
+def cache_headers(hit: bool, age_seconds: int | None = None) -> dict[str, str]:
     """Generate standard cache response headers.
 
     Args:

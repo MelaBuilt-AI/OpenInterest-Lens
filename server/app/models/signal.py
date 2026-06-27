@@ -5,10 +5,9 @@ RollPressureIndex, ContangoAlert, plus request/response wrappers.
 """
 
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Sub-models shared across signals
@@ -63,19 +62,19 @@ class PositioningSignal(BaseModel):
 
     contract: str = Field(..., description="Root symbol, e.g. 'ES'", examples=["ES", "NQ", "CL", "GC"])
     timestamp: datetime = Field(..., description="COT report reference date (Tuesday as-of)")
-    as_of_friday: Optional[date] = Field(None, description="Date the COT report was published (Friday)")
+    as_of_friday: date | None = Field(None, description="Date the COT report was published (Friday)")
     net_position: NetPosition
     smart_money: SmartMoney
     retail: Retail
     signal: SignalOverall
-    week_over_week_change: Optional[NetPosition] = Field(None, description="Change in net positions from prior week")
+    week_over_week_change: NetPosition | None = Field(None, description="Change in net positions from prior week")
 
 
 class TermStructureMonth(BaseModel):
     """Single month entry in a term structure curve."""
 
     month: str = Field(..., description="e.g. 'Jun 26'")
-    expiry_date: Optional[date] = None
+    expiry_date: date | None = None
     settlement: float
     open_interest: int
     volume: int
@@ -101,7 +100,7 @@ class TermStructureCurve(BaseModel):
     as_of_date: date
     structure_type: Literal["contango", "backwardation", "mixed", "flat"]
     months: list[TermStructureMonth]
-    curve_metrics: Optional[CurveMetrics] = None
+    curve_metrics: CurveMetrics | None = None
 
 
 class NearbyContract(BaseModel):
@@ -177,7 +176,7 @@ class SignalsRequest(BaseModel):
 class TermStructureRequest(BaseModel):
     """Query parameters for GET /term-structure/{contract}."""
 
-    date: Optional[date] = None
+    date: date | None = None
     include_history: bool = False
     days_back: int = Field(30, ge=1, le=365)
 
@@ -200,7 +199,7 @@ class SignalsResponse(BaseModel):
 
     contract: str
     current: PositioningSignal
-    history: Optional[list[PositioningSignal]] = None
+    history: list[PositioningSignal] | None = None
 
 
 class TermStructureResponse(BaseModel):
@@ -208,8 +207,8 @@ class TermStructureResponse(BaseModel):
 
     contract: str
     current: TermStructureCurve
-    contango_alerts: Optional[list[ContangoAlert]] = None
-    history: Optional[list[TermStructureCurve]] = None
+    contango_alerts: list[ContangoAlert] | None = None
+    history: list[TermStructureCurve] | None = None
 
 
 class COTTraderDetail(BaseModel):
@@ -245,7 +244,7 @@ class RollPressureResponse(BaseModel):
 
     contract: str
     current: RollPressureIndex
-    history: Optional[list[RollPressureIndex]] = None
+    history: list[RollPressureIndex] | None = None
 
 
 class ContractMetadata(BaseModel):
@@ -273,7 +272,7 @@ class ErrorResponse(BaseModel):
 
     error: str
     message: str
-    retry_after: Optional[int] = None
+    retry_after: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -284,17 +283,17 @@ class ErrorResponse(BaseModel):
 class SignalRequest(BaseModel):
     """Request body for signal computation endpoints."""
 
-    commodity: Optional[str] = Field(
+    commodity: str | None = Field(
         None,
         min_length=1,
         max_length=10,
         description="Root symbol, e.g. 'ES'. If None, computes for all tracked commodities.",
     )
-    date_range_start: Optional[date] = Field(
+    date_range_start: date | None = Field(
         None,
         description="Start date for lookback window (YYYY-MM-DD). Defaults to 52 weeks ago.",
     )
-    date_range_end: Optional[date] = Field(
+    date_range_end: date | None = Field(
         None,
         description="End date for lookback window (YYYY-MM-DD). Defaults to today.",
     )
@@ -354,7 +353,7 @@ class SignalResponse(BaseModel):
     confidence: float = Field(..., ge=0, le=1, description="Signal confidence (0=weak, 1=strong)")
     direction: Literal["bullish", "bearish", "neutral"] = Field(..., description="Signal direction")
     metadata: SignalMetadata = Field(..., description="Computation metadata")
-    positioning_breakdown: Optional[PositioningBreakdown] = Field(
+    positioning_breakdown: PositioningBreakdown | None = Field(
         None, description="Detailed breakdown if signal_type is 'positioning'"
     )
 

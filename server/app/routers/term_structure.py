@@ -9,8 +9,7 @@ Endpoints:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, date, datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -62,7 +61,7 @@ router = APIRouter(prefix="/signals", tags=["signals"])
 
 @router.get("/term-structure", response_model=MultiTermStructureResponse)
 async def get_term_structure_all(
-    date: Optional[str] = Query(None, description="As-of date (YYYY-MM-DD)"),
+    date: str | None = Query(None, description="As-of date (YYYY-MM-DD)"),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
 ):
@@ -85,7 +84,7 @@ async def get_term_structure_all(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"error": "invalid_date", "message": "Date must be in YYYY-MM-DD format."},
-            )
+            ) from None
 
     # Get all active contracts
     result = await db.execute(select(Contract.symbol).where(Contract.is_active.is_(True)))
@@ -178,7 +177,7 @@ async def get_term_structure_all(
                     commodity=sym,
                     as_of_date=ts.as_of_date,
                     data_points=len(ts.months),
-                    computed_at=datetime.now(timezone.utc),
+                    computed_at=datetime.now(UTC),
                     cache_hit=False,
                 ),
             )
@@ -193,7 +192,7 @@ async def get_term_structure_all(
 
     return MultiTermStructureResponse(
         commodities=results,
-        computed_at=datetime.now(timezone.utc),
+        computed_at=datetime.now(UTC),
     )
 
 
@@ -205,7 +204,7 @@ async def get_term_structure_all(
 @router.get("/term-structure/{commodity}", response_model=TermStructureResponse)
 async def get_term_structure_for_commodity(
     commodity: str,
-    date: Optional[str] = Query(None, description="As-of date (YYYY-MM-DD)"),
+    date: str | None = Query(None, description="As-of date (YYYY-MM-DD)"),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
 ):
@@ -239,7 +238,7 @@ async def get_term_structure_for_commodity(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"error": "invalid_date", "message": "Date must be in YYYY-MM-DD format."},
-            )
+            ) from None
 
     # Check cache
     cache = get_signal_cache()
@@ -262,17 +261,17 @@ async def get_term_structure_for_commodity(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"error": "not_found", "message": f"Contract '{commodity}' is not tracked."},
-            )
+            ) from None
         elif "No settlement data" in error_msg or "Insufficient" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={"error": "data_unavailable", "message": f"No settlement data available for '{commodity}'. Ingest data first."},
-            )
+            ) from None
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"error": "signal_error", "message": error_msg},
-            )
+            ) from None
 
     # Compute sub-metrics
     cb = compute_contango_backwardation(ts.months)
@@ -329,7 +328,7 @@ async def get_term_structure_for_commodity(
             commodity=commodity,
             as_of_date=ts.as_of_date,
             data_points=len(ts.months),
-            computed_at=datetime.now(timezone.utc),
+            computed_at=datetime.now(UTC),
             cache_hit=False,
         ),
     )
@@ -443,7 +442,7 @@ async def get_roll_pressure_all(
                     commodity=sym,
                     as_of_date=as_of_date,
                     lookback_days=days_back,
-                    computed_at=datetime.now(timezone.utc),
+                    computed_at=datetime.now(UTC),
                     cache_hit=False,
                 ),
             )
@@ -458,7 +457,7 @@ async def get_roll_pressure_all(
 
     return MultiRollPressureResponse(
         commodities=results,
-        computed_at=datetime.now(timezone.utc),
+        computed_at=datetime.now(UTC),
     )
 
 
@@ -516,17 +515,17 @@ async def get_roll_pressure_for_commodity(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"error": "not_found", "message": f"Contract '{commodity}' is not tracked."},
-            )
+            ) from None
         elif "No settlement data" in error_msg or "Insufficient" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={"error": "data_unavailable", "message": f"No settlement data available for '{commodity}'. Ingest data first."},
-            )
+            ) from None
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"error": "signal_error", "message": error_msg},
-            )
+            ) from None
 
     # Get roll calendar info
     as_of_date = date.today()
@@ -578,7 +577,7 @@ async def get_roll_pressure_for_commodity(
             commodity=commodity,
             as_of_date=as_of_date,
             lookback_days=days_back,
-            computed_at=datetime.now(timezone.utc),
+            computed_at=datetime.now(UTC),
             cache_hit=False,
         ),
     )

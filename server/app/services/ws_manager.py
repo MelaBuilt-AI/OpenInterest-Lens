@@ -7,16 +7,16 @@ Thread-safe with asyncio locks. Supports tier-gated update frequency.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from fastapi import WebSocket
 
-from app.middleware.auth import TIER_LIMITS, TierInfo
+from app.middleware.auth import TierInfo
 
 logger = structlog.get_logger(__name__)
 
@@ -92,7 +92,7 @@ class ConnectionManager:
     def __init__(self) -> None:
         self._connections: dict[str, WSConnection] = {}
         self._lock = asyncio.Lock()
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._heartbeat_task: asyncio.Task | None = None
 
     async def connect(self, websocket: WebSocket, tier_info: TierInfo) -> str:
         """Accept a WebSocket connection and register it.
@@ -128,7 +128,7 @@ class ConnectionManager:
             )
 
     async def subscribe(
-        self, conn_id: str, signal_types: list[str], contracts: Optional[list[str]] = None
+        self, conn_id: str, signal_types: list[str], contracts: list[str] | None = None
     ) -> dict[str, Any]:
         """Subscribe a connection to signal types and optionally specific contracts.
 
@@ -167,7 +167,7 @@ class ConnectionManager:
         }
 
     async def unsubscribe(
-        self, conn_id: str, signal_types: list[str], contracts: Optional[list[str]] = None
+        self, conn_id: str, signal_types: list[str], contracts: list[str] | None = None
     ) -> dict[str, Any]:
         """Unsubscribe a connection from signal types or specific contracts.
 
@@ -201,7 +201,7 @@ class ConnectionManager:
         }
 
     async def broadcast(
-        self, signal_type: str, contract: str, data: dict, timestamp: Optional[float] = None
+        self, signal_type: str, contract: str, data: dict, timestamp: float | None = None
     ) -> int:
         """Broadcast a signal update to all eligible connections.
 
@@ -284,7 +284,7 @@ class ConnectionManager:
             await self.disconnect(conn_id)
             return False
 
-    def get_connection(self, conn_id: str) -> Optional[WSConnection]:
+    def get_connection(self, conn_id: str) -> WSConnection | None:
         """Get a connection by ID (non-async, for read-only checks)."""
         return self._connections.get(conn_id)
 
@@ -345,10 +345,8 @@ class ConnectionManager:
         """Stop the heartbeat task."""
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._heartbeat_task
-            except asyncio.CancelledError:
-                pass
             self._heartbeat_task = None
 
     async def _heartbeat_loop(self) -> None:
@@ -382,7 +380,7 @@ class ConnectionManager:
 # Module-level singleton
 # ---------------------------------------------------------------------------
 
-_manager: Optional[ConnectionManager] = None
+_manager: ConnectionManager | None = None
 
 
 def get_ws_manager() -> ConnectionManager:

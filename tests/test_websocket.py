@@ -15,17 +15,17 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import FastAPI, status
-from starlette.testclient import TestClient
-
-from app.config import Settings, get_settings
 from app.main import create_app
-from app.middleware.auth import TierInfo, TIER_LIMITS
+from app.middleware.auth import TIER_LIMITS, TierInfo
+from app.services.redis_pubsub import (
+    RedisPubSubManager,
+    get_pubsub_manager,
+    reset_pubsub_manager,
+)
 from app.services.ws_manager import (
-    HEARTBEAT_INTERVAL,
     HEARTBEAT_TIMEOUT,
     TIER_UPDATE_FREQUENCIES,
     ConnectionManager,
@@ -33,13 +33,7 @@ from app.services.ws_manager import (
     get_ws_manager,
     reset_ws_manager,
 )
-from app.services.redis_pubsub import (
-    RedisPubSubManager,
-    SIGNAL_CHANNEL_PREFIX,
-    get_pubsub_manager,
-    reset_pubsub_manager,
-)
-
+from starlette.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -327,7 +321,7 @@ class TestConnectionManager:
         mock_ws2.send_text = AsyncMock()
 
         conn_id1 = await manager.connect(mock_ws1, enterprise_tier_info)
-        conn_id2 = await manager.connect(mock_ws2, enterprise_tier_info)
+        await manager.connect(mock_ws2, enterprise_tier_info)
 
         # Only conn1 subscribes to positioning
         await manager.subscribe(conn_id1, ["positioning"])
@@ -540,11 +534,10 @@ class TestWebSocketEndpoint:
         """Missing API key should be rejected."""
         # WebSocket accept happens before auth check in the "no query param" path,
         # but the auth timeout / message-based auth will close it
-        with pytest.raises(Exception):
-            with client.websocket_connect("/ws/v1/signals") as ws:
-                # Connection accepted, but we don't send auth → timeout
-                # In test, this may just hang — let's test with explicit rejection
-                pass
+        with pytest.raises(Exception), client.websocket_connect("/ws/v1/signals"):
+            # Connection accepted, but we don't send auth → timeout
+            # In test, this may just hang — let's test with explicit rejection
+            pass
 
     def test_ws_subscribe_message(self, client):
         """Test subscribing to signal types via WebSocket message."""
@@ -691,7 +684,7 @@ class TestRedisPubSubManager:
 
         manager = RedisPubSubManager(redis=mock_redis, ws_manager=None)
 
-        count = await manager.publish("positioning", "ES", {"signal": "bullish"})
+        await manager.publish("positioning", "ES", {"signal": "bullish"})
 
         # Should have called Redis publish
         mock_redis.publish.assert_called_once()

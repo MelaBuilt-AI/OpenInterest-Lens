@@ -5,8 +5,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import time
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import structlog
 
@@ -18,7 +17,7 @@ logger = structlog.get_logger(__name__)
 
 # In-memory store for rotated keys with grace periods.
 # In production, this would be a database table.
-_rotated_keys: dict[str, "_RotatedKeyInfo"] = {}
+_rotated_keys: dict[str, _RotatedKeyInfo] = {}
 
 GRACE_PERIOD_SECONDS = 3600  # 1 hour grace period for rotated keys
 
@@ -75,7 +74,7 @@ def rotate_api_key(
     return new_key, new_hash
 
 
-def check_rotated_key(api_key: str) -> Optional[_RotatedKeyInfo]:
+def check_rotated_key(api_key: str) -> _RotatedKeyInfo | None:
     """Check if a key is a rotated key still within its grace period.
 
     Returns the rotation info if the key is valid during grace period,
@@ -116,7 +115,7 @@ ENDPOINT_RATE_LIMITS: dict[str, dict[str, int]] = {
 }
 
 
-def get_endpoint_rate_limit(path: str, tier: str) -> Optional[int]:
+def get_endpoint_rate_limit(path: str, tier: str) -> int | None:
     """Get the per-endpoint rate limit for a request path and tier.
 
     Returns the requests-per-hour limit, or None if no per-endpoint limit applies.
@@ -132,7 +131,7 @@ def get_endpoint_rate_limit(path: str, tier: str) -> Optional[int]:
         if len(parts) != len(pattern_parts):
             continue
         match = True
-        for p_part, pat_part in zip(parts, pattern_parts):
+        for p_part, pat_part in zip(parts, pattern_parts, strict=False):
             if pat_part.startswith("{") and pat_part.endswith("}"):
                 continue  # Dynamic segment matches anything
             if p_part != pat_part:

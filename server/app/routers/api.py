@@ -13,27 +13,25 @@ Responses include X-Cache and X-RateLimit headers.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, date, datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_api_key
-from app.middleware.auth import TierInfo, TIER_LIMITS
-from app.models.db import Contract, RawCOTReport, SignalPositioning
-from app.services.redis_cache import RedisCacheService, get_cache_service, cache_headers
-from app.signals.positioning import compute_positioning_signal
+from app.middleware.auth import TIER_LIMITS, TierInfo
+from app.models.db import Contract, RawCOTReport
+from app.services.redis_cache import RedisCacheService, cache_headers, get_cache_service
 from app.signals.roll_calendar import calculate_roll_info
-from app.signals.roll_pressure import compute_roll_pressure, compute_roll_impact_score
+from app.signals.roll_pressure import compute_roll_impact_score, compute_roll_pressure
 from app.signals.term_structure import (
-    compute_term_structure,
-    compute_contango_backwardation,
-    compute_term_structure_slope,
     compute_calendar_spread_ratio,
+    compute_contango_backwardation,
+    compute_term_structure,
+    compute_term_structure_slope,
 )
 
 logger = structlog.get_logger(__name__)
@@ -76,8 +74,8 @@ async def _get_contract_id(symbol: str, db: AsyncSession) -> int:
 async def get_term_structure(
     contract: str,
     response: Response,
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: str | None = Query(None, description="End date (YYYY-MM-DD)"),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
 ):
@@ -125,7 +123,7 @@ async def get_term_structure(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"error": "invalid_date", "message": "Date must be in YYYY-MM-DD format."},
-            )
+            ) from None
 
     # Cache check (latest only)
     cache = get_cache_service()
@@ -149,17 +147,17 @@ async def get_term_structure(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"error": "not_found", "message": f"Contract '{contract}' is not tracked."},
-            )
+            ) from None
         elif "No settlement data" in error_msg or "Insufficient" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={"error": "data_unavailable", "message": f"No settlement data available for '{contract}'."},
-            )
+            ) from None
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"error": "signal_error", "message": error_msg},
-            )
+            ) from None
 
     # Compute sub-metrics
     cb = compute_contango_backwardation(ts.months)
@@ -194,7 +192,7 @@ async def get_term_structure(
             "commodity": contract,
             "as_of_date": ts.as_of_date.isoformat() if ts.as_of_date else None,
             "data_points": len(ts.months),
-            "computed_at": datetime.now(timezone.utc).isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
         },
     }
 
@@ -218,9 +216,9 @@ async def get_term_structure(
 async def get_cot(
     contract: str,
     response: Response,
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    format: Optional[str] = Query(None, description="Response format: 'full' (default) or 'summary'"),
+    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: str | None = Query(None, description="End date (YYYY-MM-DD)"),
+    format: str | None = Query(None, description="Response format: 'full' (default) or 'summary'"),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
 ):
@@ -261,7 +259,7 @@ async def get_cot(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"error": "invalid_date", "message": "start_date must be YYYY-MM-DD format."},
-            )
+            ) from None
     if end_date:
         try:
             end = dt.strptime(end_date, "%Y-%m-%d").date()
@@ -269,7 +267,7 @@ async def get_cot(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"error": "invalid_date", "message": "end_date must be YYYY-MM-DD format."},
-            )
+            ) from None
 
     # Enforce history depth by tier
     tier_limits = TIER_LIMITS.get(tier_info.tier, {})
@@ -314,7 +312,7 @@ async def get_cot(
         )
 
     # Compute Z-scores and percentiles
-    from app.signals.historical import rolling_z_score, percentile_rank
+    from app.signals.historical import percentile_rank, rolling_z_score
 
     # Build history arrays for computation
     commercial_nets = [r.commercial_net for r in reversed(reports)]
@@ -322,7 +320,7 @@ async def get_cot(
     non_reportable_nets = [r.non_reportable_net for r in reversed(reports)]
 
     resp_reports = []
-    for i, r in enumerate(reports):
+    for _i, r in enumerate(reports):
         # Compute Z-scores relative to all available history
         c_z = rolling_z_score(r.commercial_net, commercial_nets) if len(commercial_nets) >= 2 else 0.0
         c_pct = percentile_rank(r.commercial_net, commercial_nets)
@@ -364,7 +362,7 @@ async def get_cot(
         "reports": resp_reports,
         "metadata": {
             "total_reports": len(resp_reports),
-            "computed_at": datetime.now(timezone.utc).isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
         },
     }
 
@@ -388,8 +386,8 @@ async def get_cot(
 async def get_roll_pressure(
     contract: str,
     response: Response,
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: str | None = Query(None, description="End date (YYYY-MM-DD)"),
     days_back: int = Query(30, ge=1, le=365, description="Days of history for OI decay analysis"),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
@@ -451,17 +449,17 @@ async def get_roll_pressure(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"error": "not_found", "message": f"Contract '{contract}' is not tracked."},
-            )
+            ) from None
         elif "No settlement data" in error_msg or "Insufficient" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={"error": "data_unavailable", "message": f"No settlement data available for '{contract}'."},
-            )
+            ) from None
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"error": "signal_error", "message": error_msg},
-            )
+            ) from None
 
     # Get roll calendar info
     as_of_date = date.today()
@@ -508,7 +506,7 @@ async def get_roll_pressure(
             "commodity": contract,
             "as_of_date": as_of_date.isoformat(),
             "lookback_days": days_back,
-            "computed_at": datetime.now(timezone.utc).isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
         },
     }
 

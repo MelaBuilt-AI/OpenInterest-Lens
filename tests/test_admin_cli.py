@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from click.testing import CliRunner
 
-from admin.cli import cli, _hash_key
+from admin.cli import _hash_key, cli
 
 
 class TestKeyCreate:

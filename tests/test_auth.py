@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO, TEST_API_KEY_ENTERPRISE
+from tests.conftest import TEST_API_KEY_ENTERPRISE, TEST_API_KEY_FREE, TEST_API_KEY_PRO
 
 
 @pytest.mark.asyncio

@@ -8,9 +8,8 @@ Falls back to in-memory pub/sub when Redis is unavailable.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
-import threading
-from typing import Any, Optional
 
 import structlog
 
@@ -34,7 +33,7 @@ class RedisPubSubManager:
         self._redis = redis
         self._ws_manager = ws_manager
         self._pubsub = None
-        self._listener_task: Optional[asyncio.Task] = None
+        self._listener_task: asyncio.Task | None = None
         self._in_memory_subscribers: list[callable] = []
         self._running = False
 
@@ -69,10 +68,8 @@ class RedisPubSubManager:
 
         if self._listener_task:
             self._listener_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._listener_task
-            except asyncio.CancelledError:
-                pass
             self._listener_task = None
 
         if self._pubsub:
@@ -189,7 +186,7 @@ class RedisPubSubManager:
 # Module-level singleton
 # ---------------------------------------------------------------------------
 
-_pubsub_manager: Optional[RedisPubSubManager] = None
+_pubsub_manager: RedisPubSubManager | None = None
 
 
 def get_pubsub_manager(redis=None, ws_manager=None) -> RedisPubSubManager:

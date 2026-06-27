@@ -7,24 +7,20 @@ to API response, including auth, rate limiting, WebSocket, and error scenarios.
 from __future__ import annotations
 
 import asyncio
-import json
-from datetime import date, datetime, timedelta, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from datetime import date, timedelta
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
 from app.database import Base, get_db
 from app.models.db import (
-    APIKey,
     Contract,
     RawCOTReport,
     RawSettlement,
 )
-from app.models.ingestion import COTReportCreate, SettlementCreate
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # ---------------------------------------------------------------------------
 # Test database and client fixtures
@@ -509,20 +505,18 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_ws_free_tier_rejected(self, int_client: AsyncClient):
         """Free tier WebSocket connection is rejected (403-equivalent)."""
-        from app.main import app
 
         # Use a fresh app instance for WS testing
         with pytest.raises(Exception):
             # Free tier keys should be rejected at the WebSocket level
             async with int_client.websocket_connect(
                 "/ws/v1/signals?api_key=oil_sk_live_demo_free"
-            ) as ws:
+            ):
                 pass  # Should not reach here
 
     @pytest.mark.asyncio
     async def test_ws_pro_tier_auth_success(self, int_client: AsyncClient):
         """Pro tier can authenticate via WebSocket."""
-        from app.main import app
 
         # Pro key allows WebSocket
         try:
@@ -545,7 +539,7 @@ class TestWebSocketIntegration:
                 "/ws/v1/signals?api_key=oil_sk_live_demo_pro"
             ) as ws:
                 # Auth
-                auth = await asyncio.wait_for(ws.receive_json(), timeout=5.0)
+                await asyncio.wait_for(ws.receive_json(), timeout=5.0)
 
                 # Subscribe
                 await ws.send_json({

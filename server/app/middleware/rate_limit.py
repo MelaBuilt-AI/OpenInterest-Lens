@@ -12,15 +12,11 @@ Tiers:
 from __future__ import annotations
 
 import time
-from collections import defaultdict
 from dataclasses import dataclass
-from typing import Optional
 
 import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-
-from app.middleware.auth import TIER_LIMITS
 
 logger = structlog.get_logger(__name__)
 
@@ -111,10 +107,7 @@ async def check_rate_limit(tier: str, user_id: str, redis=None) -> tuple[int, in
             current_count = results[0]
             ttl = results[1]
 
-            if ttl == -1:
-                await redis.expire(rate_key, RATE_LIMIT_WINDOW_SECONDS)
-                ttl = RATE_LIMIT_WINDOW_SECONDS
-            elif ttl == -2:
+            if ttl == -1 or ttl == -2:
                 await redis.expire(rate_key, RATE_LIMIT_WINDOW_SECONDS)
                 ttl = RATE_LIMIT_WINDOW_SECONDS
 

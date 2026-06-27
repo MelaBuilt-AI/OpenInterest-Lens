@@ -13,8 +13,8 @@ from __future__ import annotations
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
-from typing import Any, Optional
+from datetime import date
+from typing import Any
 
 import structlog
 
@@ -74,7 +74,7 @@ class SignalCache:
     def make_key(
         commodity: str,
         signal_type: str = "positioning",
-        as_of_date: Optional[date] = None,
+        as_of_date: date | None = None,
     ) -> str:
         """Generate a cache key from commodity, signal type, and date.
 
@@ -89,7 +89,7 @@ class SignalCache:
         date_str = as_of_date.isoformat() if as_of_date else "latest"
         return f"{signal_type}:{commodity}:{date_str}"
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Retrieve a cached value by key.
 
         Returns None if the key doesn't exist or has expired.
@@ -121,7 +121,7 @@ class SignalCache:
         self,
         key: str,
         value: Any,
-        ttl_seconds: Optional[float] = None,
+        ttl_seconds: float | None = None,
     ) -> None:
         """Store a value in the cache.
 
@@ -142,7 +142,7 @@ class SignalCache:
             ttl_seconds=ttl_seconds or self._default_ttl,
         )
 
-    def invalidate(self, commodity: Optional[str] = None) -> int:
+    def invalidate(self, commodity: str | None = None) -> int:
         """Invalidate cache entries.
 
         Args:
@@ -180,7 +180,7 @@ class SignalCache:
         """
         # Invalidate all signal types for this commodity
         total_removed = 0
-        for signal_type in ("positioning", "smart_money", "retail_contrarian"):
+        for _signal_type in ("positioning", "smart_money", "retail_contrarian"):
             total_removed += self.invalidate(commodity)
             # Also invalidate with the commodity prefix approach
         prefix = f":{commodity}:"
@@ -232,7 +232,7 @@ class SignalCache:
 # Module-level cache instance (singleton)
 # ---------------------------------------------------------------------------
 
-_signal_cache: Optional[SignalCache] = None
+_signal_cache: SignalCache | None = None
 
 
 def get_signal_cache() -> SignalCache:

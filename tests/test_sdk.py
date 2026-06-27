@@ -14,13 +14,11 @@ Covers:
 from __future__ import annotations
 
 import asyncio
-import json
-from datetime import date, datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, date, datetime
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-import pytest_asyncio
 
 from sdk.async_client import AsyncOpenInterestLensClient
 from sdk.builder import ClientBuilder
@@ -36,36 +34,22 @@ from sdk.exceptions import (
 )
 from sdk.models import (
     APIResponse,
+    Contract,
+    ContractsResponse,
     COTReport,
     COTResponse,
-    COTTraderDetail,
-    CalendarSpreadRatios,
-    ContractsResponse,
-    ContangoBackwardation,
-    Contract,
     HealthResponse,
     NetPosition,
-    NearbyContract,
     PaginatedResponse,
-    PositioningBreakdown,
     PositioningSignal,
     PositioningSignalResponse,
     Retail,
-    RollCalendarData,
-    RollImpactData,
-    RollPressureIndex,
-    RollPressureMetrics,
     RollPressureResponse,
-    SignalMetadata,
     SignalOverall,
     SmartMoney,
-    SlopeMetrics,
-    TermStructureCurve,
     TermStructureMonth,
     TermStructureResponse,
-    TraderPositionBreakdown,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures — sample response data
@@ -417,7 +401,7 @@ class TestModels:
     def test_positioning_signal_full(self):
         ps = PositioningSignal(
             contract="ES",
-            timestamp=datetime(2025, 1, 15, tzinfo=timezone.utc),
+            timestamp=datetime(2025, 1, 15, tzinfo=UTC),
             net_position=NetPosition(commercial=-50000, non_commercial=30000, non_reportable=5000),
             smart_money=SmartMoney(z_score=-2.1, percentile=5.0, direction="short", conviction="high"),
             retail=Retail(z_score=1.8, percentile=92.0, direction="long", contrarian_signal="fade_long"),
@@ -567,7 +551,7 @@ class TestSyncClient:
         mock_response = _mock_response(200, SAMPLE_SIGNAL_DATA)
 
         with patch.object(client._client, "request", return_value=mock_response) as mock_req:
-            result = client.get_signals("es")
+            client.get_signals("es")
             mock_req.assert_called_once()
             call_args = mock_req.call_args
             assert "/ES" in call_args[0][1] or "/ES" in str(call_args)
@@ -706,11 +690,10 @@ class TestSyncClient:
                 return error_response
             return success_response
 
-        with patch.object(client._client, "request", side_effect=mock_request):
-            with patch("sdk.client.time.sleep"):
-                result = client.get_signals("ES")
-                assert isinstance(result, PositioningSignalResponse)
-                assert call_count == 3
+        with patch.object(client._client, "request", side_effect=mock_request), patch("sdk.client.time.sleep"):
+            result = client.get_signals("ES")
+            assert isinstance(result, PositioningSignalResponse)
+            assert call_count == 3
 
         client.close()
 
@@ -734,10 +717,9 @@ class TestSyncClient:
 
         responses = [rate_limited, success]
 
-        with patch.object(client._client, "request", side_effect=responses):
-            with patch("sdk.client.time.sleep"):
-                result = client.get_signals("ES")
-                assert isinstance(result, PositioningSignalResponse)
+        with patch.object(client._client, "request", side_effect=responses), patch("sdk.client.time.sleep"):
+            result = client.get_signals("ES")
+            assert isinstance(result, PositioningSignalResponse)
 
         client.close()
 
@@ -972,7 +954,6 @@ class TestBuilder:
         client = ClientBuilder().api_key("test").build_async()
         assert isinstance(client, AsyncOpenInterestLensClient)
         assert client.api_key == "test"
-        import asyncio
         asyncio.run(client.close())
 
     def test_builder_chaining(self):

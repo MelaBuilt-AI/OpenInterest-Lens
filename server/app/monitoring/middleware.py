@@ -77,7 +77,7 @@ def add_metrics_endpoint(app: FastAPI) -> None:
     @app.get("/metrics", tags=["monitoring"], include_in_schema=False)
     async def metrics_endpoint() -> Response:
         """Expose Prometheus-format metrics."""
-        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
         body = generate_latest()
         return Response(content=body, media_type=CONTENT_TYPE_LATEST)

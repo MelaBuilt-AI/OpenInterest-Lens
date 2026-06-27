@@ -7,18 +7,15 @@ Endpoints:
 
 from __future__ import annotations
 
-import hashlib
 import time
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.dependencies import require_api_key
 from app.middleware.auth import TierInfo
 from app.middleware.security import (
-    generate_api_key,
-    hash_api_key,
     rotate_api_key,
 )
 

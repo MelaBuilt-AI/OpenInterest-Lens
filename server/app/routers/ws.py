@@ -33,18 +33,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
-from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 
 from app.config import Settings, get_settings
-from app.middleware.auth import APIKeyAuth, TIER_LIMITS, TierInfo
+from app.middleware.auth import TIER_LIMITS, APIKeyAuth, TierInfo
 from app.services.ws_manager import (
-    HEARTBEAT_INTERVAL,
-    HEARTBEAT_TIMEOUT,
-    ConnectionManager,
     get_ws_manager,
 )
 
@@ -57,7 +52,7 @@ _auth = APIKeyAuth()
 
 async def _authenticate_ws(
     api_key: str, settings: Settings
-) -> tuple[Optional[TierInfo], Optional[str]]:
+) -> tuple[TierInfo | None, str | None]:
     """Validate an API key for WebSocket authentication.
 
     Returns (tier_info, None) on success, or (None, error_message) on failure.
@@ -85,7 +80,7 @@ async def _authenticate_ws(
 @router.websocket("/signals")
 async def websocket_signals(
     websocket: WebSocket,
-    api_key: Optional[str] = Query(None),
+    api_key: str | None = Query(None),
 ) -> None:
     """Main WebSocket endpoint for real-time signal updates.
 
@@ -93,7 +88,7 @@ async def websocket_signals(
     """
     manager = get_ws_manager()
     settings = get_settings()
-    conn_id: Optional[str] = None
+    conn_id: str | None = None
     authenticated = False
 
     # --- Pre-accept authentication check ---
@@ -163,7 +158,7 @@ async def websocket_signals(
             }))
 
             authenticated = True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             await websocket.close(
                 code=status.WS_1008_POLICY_VIOLATION,
                 reason="Authentication timeout",

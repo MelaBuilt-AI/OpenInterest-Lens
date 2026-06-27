@@ -9,11 +9,11 @@ Supports both futures-only and combined (futures+options) reports.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import csv
 import io
 import re
 from datetime import date, datetime, timedelta
-from typing import Optional
 
 import httpx
 import structlog
@@ -21,13 +21,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory
-from app.models.db import Contract, RawCOTReport
-from app.models.ingestion import COTIngestionResult, COTReportCreate
 from app.ingestion.validators import (
-    ValidationResult,
-    detect_duplicate_cot,
     validate_cot_batch,
 )
+from app.models.db import Contract, RawCOTReport
+from app.models.ingestion import COTIngestionResult, COTReportCreate
 
 logger = structlog.get_logger(__name__)
 
@@ -98,8 +96,8 @@ class COTFetcher:
 
     def __init__(self, timeout: float = 30.0) -> None:
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
-        self._last_fetch_error: Optional[str] = None
+        self._client: httpx.AsyncClient | None = None
+        self._last_fetch_error: str | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the httpx async client."""
@@ -137,7 +135,7 @@ class COTFetcher:
         url = CFTC_FUTURES_TEXT_URL
         logger.info("fetching_cot_data", url=url, report_type=report_type)
 
-        last_error: Optional[str] = None
+        last_error: str | None = None
         for attempt in range(self.MAX_RETRIES):
             try:
                 response = await client.get(url)
@@ -199,8 +197,6 @@ class COTFetcher:
         lines = content.strip().split("\n")
 
         # CFTC text format markers
-        current_commodity = None
-        current_date = None
 
         for line in lines:
             line = line.strip()
@@ -209,18 +205,15 @@ class COTFetcher:
 
             # Try to detect commodity header lines
             # Format varies but typically has the commodity name in uppercase
-            for cftc_name, symbol in CFTC_NAME_MAP.items():
+            for cftc_name, _symbol in CFTC_NAME_MAP.items():
                 if cftc_name in line.upper():
-                    current_commodity = cftc_name
                     break
 
             # Try to detect date lines
             date_match = re.search(r"(\d{1,2}/\d{1,2}/\d{4})", line)
             if date_match:
-                try:
-                    current_date = datetime.strptime(date_match.group(1), "%m/%d/%Y").date()
-                except ValueError:
-                    pass
+                with contextlib.suppress(ValueError):
+                    datetime.strptime(date_match.group(1), "%m/%d/%Y").date()
 
         # In practice, CFTC text parsing is complex and format-dependent.
         # For production, we'd use the CSV endpoints which are more structured.
@@ -363,7 +356,7 @@ class COTFetcher:
 
         return results
 
-    def _match_cftc_name(self, market_name: str) -> Optional[str]:
+    def _match_cftc_name(self, market_name: str) -> str | None:
         """Match a CFTC market name to our contract symbol."""
         # Direct match
         if market_name in CFTC_NAME_MAP:
@@ -376,7 +369,7 @@ class COTFetcher:
 
         return None
 
-    def _parse_cftc_date(self, date_str: str) -> Optional[date]:
+    def _parse_cftc_date(self, date_str: str) -> date | None:
         """Parse CFTC date strings in various formats."""
         date_str = date_str.strip()
         if not date_str:

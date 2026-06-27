@@ -6,13 +6,11 @@ api_keys, webhook_subscriptions.
 """
 
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint, Index
+from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
-
 
 # ---------------------------------------------------------------------------
 # Contract mapping
@@ -33,7 +31,7 @@ class Contract(Base):
     contract_size: Mapped[float] = mapped_column(Float, nullable=False)
     months_traded: Mapped[str] = mapped_column(Text, nullable=False, comment="JSON array of month codes, e.g. '[\"H\",\"M\",\"U\",\"Z\"]'")
     data_available_from: Mapped[str] = mapped_column(String(10), nullable=False, comment="YYYY-MM-DD")
-    cftc_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, comment="CFTC report name for mapping")
+    cftc_name: Mapped[str | None] = mapped_column(String(200), nullable=True, comment="CFTC report name for mapping")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -56,7 +54,7 @@ class RawCOTReport(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     contract_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     as_of_date: Mapped[datetime] = mapped_column(DateTime, nullable=False, comment="Tuesday reference date")
-    published_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="Friday publication date")
+    published_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="Friday publication date")
     commercial_long: Mapped[int] = mapped_column(Integer, nullable=False)
     commercial_short: Mapped[int] = mapped_column(Integer, nullable=False)
     commercial_net: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -106,7 +104,7 @@ class SignalPositioning(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     contract_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    as_of_friday: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    as_of_friday: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Net positions
     net_commercial: Mapped[int] = mapped_column(Integer, nullable=False)
     net_non_commercial: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -126,9 +124,9 @@ class SignalPositioning(Base):
     signal_strength: Mapped[float] = mapped_column(Float, nullable=False)
     signal_divergence: Mapped[bool] = mapped_column(Boolean, nullable=False)
     # Week-over-week change
-    wow_commercial: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    wow_non_commercial: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    wow_non_reportable: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    wow_commercial: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    wow_non_commercial: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    wow_non_reportable: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Metadata
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -147,11 +145,11 @@ class SignalTermStructure(Base):
     as_of_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     structure_type: Mapped[str] = mapped_column(String(20), nullable=False)
     curve_json: Mapped[str] = mapped_column(Text, nullable=False, comment="JSON blob of TermStructureCurve months")
-    front_month_oi: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    total_oi: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    oi_concentration_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    avg_daily_volume: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    steepness: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    front_month_oi: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_oi: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    oi_concentration_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    avg_daily_volume: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    steepness: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
@@ -225,10 +223,10 @@ class APIKey(Base):
     key_prefix: Mapped[str] = mapped_column(String(12), nullable=False, comment="First 12 chars for identification, e.g. 'oil_sk_live_'")
     tier: Mapped[str] = mapped_column(String(20), nullable=False, comment="free | pro | enterprise")
     user_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    contracts_allowed: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="JSON array of allowed contract symbols, or null for all within tier")
+    contracts_allowed: Mapped[str | None] = mapped_column(Text, nullable=True, comment="JSON array of allowed contract symbols, or null for all within tier")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class WebhookSubscription(Base):
@@ -243,5 +241,5 @@ class WebhookSubscription(Base):
     signal_types: Mapped[str] = mapped_column(Text, nullable=False, comment="JSON array: positioning, roll_pressure, contango_alert, term_structure")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    last_delivery_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    last_delivery_status: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="HTTP status code of last delivery")
+    last_delivery_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_delivery_status: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="HTTP status code of last delivery")

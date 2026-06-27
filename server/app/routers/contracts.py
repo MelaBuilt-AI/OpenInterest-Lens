@@ -1,6 +1,7 @@
 """GET /v1/contracts — list tracked contracts with metadata."""
 
 import json
+
 import structlog
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
@@ -11,8 +12,7 @@ from app.dependencies import require_api_key
 from app.middleware.auth import TierInfo
 from app.models.db import Contract
 from app.models.signal import ContractMetadata, ContractsResponse
-from app.config import Settings, get_settings
-from app.services.redis_cache import get_cache_service, RedisCacheService, cache_headers
+from app.services.redis_cache import RedisCacheService, get_cache_service
 
 logger = structlog.get_logger(__name__)
 

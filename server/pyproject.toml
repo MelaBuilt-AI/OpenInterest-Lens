@@ -46,6 +46,14 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B017", "B018", "SIM102", "SIM108", "SIM105", "SIM117", "E402", "N806"]
+"app/routers/ingestion.py" = ["N806"]
+"app/routers/ws.py" = ["E402"]
+"app/signals/curve_utils.py" = ["SIM102"]
+"app/signals/roll_calendar.py" = ["SIM108"]
 
 [tool.mypy]
 python_version = "3.11"

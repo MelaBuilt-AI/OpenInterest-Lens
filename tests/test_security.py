@@ -2,28 +2,19 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.middleware.auth import APIKeyAuth
 from app.middleware.security import (
+    check_rotated_key,
     generate_api_key,
+    get_endpoint_rate_limit,
     hash_api_key,
     rotate_api_key,
-    check_rotated_key,
     validate_cors_origin,
-    get_endpoint_rate_limit,
-    ENDPOINT_RATE_LIMITS,
-    GRACE_PERIOD_SECONDS,
 )
-from app.middleware.auth import APIKeyAuth
-from app.database import get_db
-from app.main import app
+from httpx import AsyncClient
 
-from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO, TEST_API_KEY_ENTERPRISE
-
+from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO
 
 # ---------------------------------------------------------------------------
 # API Key Rotation Tests

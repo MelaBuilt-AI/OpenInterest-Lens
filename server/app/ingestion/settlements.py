@@ -15,12 +15,10 @@ For MVP, we support the CSV download approach with mock data for testing.
 from __future__ import annotations
 
 import asyncio
-
 import csv
 import io
 import re
 from datetime import date, datetime, timedelta
-from typing import Optional
 
 import httpx
 import structlog
@@ -28,12 +26,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory
-from app.models.db import Contract, RawSettlement
-from app.models.ingestion import SettlementCreate, SettlementIngestionResult
 from app.ingestion.validators import (
-    detect_duplicate_settlement,
     validate_settlement_batch,
 )
+from app.models.db import Contract, RawSettlement
+from app.models.ingestion import SettlementCreate, SettlementIngestionResult
 
 logger = structlog.get_logger(__name__)
 
@@ -211,8 +208,8 @@ class SettlementFetcher:
 
     def __init__(self, timeout: float = 30.0) -> None:
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
-        self._last_fetch_error: Optional[str] = None
+        self._client: httpx.AsyncClient | None = None
+        self._last_fetch_error: str | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the httpx async client."""
@@ -235,7 +232,7 @@ class SettlementFetcher:
     async def fetch_settlements(
         self,
         symbol: str,
-        settlement_date: Optional[date] = None,
+        settlement_date: date | None = None,
     ) -> list[dict]:
         """Fetch settlement data for a specific contract symbol.
 
@@ -311,8 +308,8 @@ class SettlementFetcher:
 
     async def fetch_all_settlements(
         self,
-        symbols: Optional[list[str]] = None,
-        settlement_date: Optional[date] = None,
+        symbols: list[str] | None = None,
+        settlement_date: date | None = None,
     ) -> list[dict]:
         """Fetch settlements for all tracked contracts.
 
@@ -333,7 +330,7 @@ class SettlementFetcher:
 
         return all_results
 
-    def _parse_cme_json(self, data: dict, symbol: str, settlement_date: Optional[date]) -> list[dict]:
+    def _parse_cme_json(self, data: dict, symbol: str, settlement_date: date | None) -> list[dict]:
         """Parse CME JSON settlement data.
 
         CME API returns JSON with 'settlements' array containing contract months.
@@ -370,7 +367,7 @@ class SettlementFetcher:
 
         return results
 
-    def _parse_cme_csv(self, csv_content: str, symbol: str, settlement_date: Optional[date]) -> list[dict]:
+    def _parse_cme_csv(self, csv_content: str, symbol: str, settlement_date: date | None) -> list[dict]:
         """Parse CME CSV settlement data.
 
         CME settlement CSV typically has columns like:
@@ -487,9 +484,8 @@ async def store_settlements(
 
     # Get existing settlement keys for duplicate detection
     existing_settlements = await db.execute(select(RawSettlement))
-    existing_keys: set[tuple[date, str]] = set()
     for s in existing_settlements.scalars().all():
-        key = (s.settlement_date.date() if isinstance(s.settlement_date, datetime) else s.settlement_date, s.month_code)
+        (s.settlement_date.date() if isinstance(s.settlement_date, datetime) else s.settlement_date, s.month_code)
         # Need to also match by contract, but for simplicity we'll check per-contract below
 
     for settlement in settlements:
@@ -568,8 +564,8 @@ async def store_settlements(
 
 
 async def ingest_settlements(
-    symbols: Optional[list[str]] = None,
-    settlement_date: Optional[date] = None,
+    symbols: list[str] | None = None,
+    settlement_date: date | None = None,
     db: AsyncSession | None = None,
 ) -> SettlementIngestionResult:
     """Main entry point: fetch, parse, validate, and store settlement data.

@@ -8,10 +8,10 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
 from app.database import Base
 from app.models.db import (  # noqa: F401 — ensure models are imported for metadata
     APIKey,

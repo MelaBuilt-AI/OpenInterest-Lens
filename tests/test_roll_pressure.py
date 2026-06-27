@@ -13,41 +13,33 @@ Tests cover:
 
 from __future__ import annotations
 
-import math
-from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from datetime import date, datetime, timedelta
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
 from app.database import Base, get_db
 from app.models.db import Contract, RawSettlement
-from app.models.signal import RollPressureIndex, RollPressureMetrics, NearbyContract
+from app.services.signal_cache import reset_signal_cache
 from app.signals.roll_calendar import (
-    ROLL_START_DAYS_BEFORE_EXPIRY,
     calculate_expiry_date,
+    calculate_roll_date_proximity,
     calculate_roll_info,
-    classify_roll_urgency,
     estimate_oi_decay_rate,
     estimate_roll_volume,
     generate_month_code,
     generate_roll_schedule,
-    get_active_contract_months,
     parse_month_code,
-    calculate_roll_date_proximity,
 )
 from app.signals.roll_pressure import (
-    compute_roll_impact_score,
-    analyze_historical_roll_pattern,
     _compute_roll_pressure_score,
+    analyze_historical_roll_pattern,
+    compute_roll_impact_score,
 )
-from app.services.signal_cache import reset_signal_cache
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -802,8 +794,8 @@ class TestEdgeCases:
 
     def test_single_month_term_structure(self):
         """Single month should result in flat classification."""
-        from app.signals.term_structure import compute_contango_backwardation
         from app.models.signal import TermStructureMonth
+        from app.signals.term_structure import compute_contango_backwardation
 
         months = [TermStructureMonth(
             month="Jun 26", expiry_date=date(2026, 6, 19),
@@ -816,8 +808,8 @@ class TestEdgeCases:
 
     def test_inverted_curve_term_structure(self):
         """Inverted curve (backwardation) should be properly detected."""
-        from app.signals.term_structure import compute_contango_backwardation
         from app.models.signal import TermStructureMonth
+        from app.signals.term_structure import compute_contango_backwardation
 
         months = [
             TermStructureMonth(month="Jun 26", expiry_date=date(2026, 6, 19), settlement=4600.0, open_interest=2000000, volume=1000000, spread_to_front=0.0, annualized_yield=0.0),
@@ -830,8 +822,8 @@ class TestEdgeCases:
 
     def test_zero_oi_in_term_structure(self):
         """Zero OI months should not crash calculations."""
-        from app.signals.term_structure import compute_calendar_spread_ratio
         from app.models.signal import TermStructureMonth
+        from app.signals.term_structure import compute_calendar_spread_ratio
 
         months = [
             TermStructureMonth(month="Jun 26", expiry_date=date(2026, 6, 19), settlement=4500.0, open_interest=0, volume=0, spread_to_front=0.0, annualized_yield=0.0),

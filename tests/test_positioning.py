@@ -12,31 +12,19 @@ Tests cover:
 from __future__ import annotations
 
 import time
-from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from datetime import date, datetime, timedelta
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
 from app.database import Base, get_db
 from app.models.db import Contract, RawCOTReport
 from app.models.signal import (
     NetPosition,
-    PositioningBreakdown,
-    PositioningSignal,
-    PositioningSignalResponse,
     Retail,
-    SignalMetadata,
-    SignalOverall,
     SmartMoney,
-    TraderPositionBreakdown,
 )
+from app.services.signal_cache import SignalCache, get_signal_cache, reset_signal_cache
 from app.signals.historical import (
-    detect_extreme_positioning,
-    detect_mean_reversion,
     percentile_rank,
     rolling_z_score,
 )
@@ -45,10 +33,11 @@ from app.signals.positioning import (
     compute_retail_signal,
     compute_smart_money_signal,
 )
-from app.services.signal_cache import SignalCache, get_signal_cache, reset_signal_cache
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO, TEST_API_KEY_ENTERPRISE
-
+from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO
 
 # ---------------------------------------------------------------------------
 # Fixtures

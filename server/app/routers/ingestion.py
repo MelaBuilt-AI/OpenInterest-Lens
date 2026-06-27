@@ -12,23 +12,20 @@ import re
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_api_key
+from app.ingestion.cot import get_cot_status, ingest_cot_reports
+from app.ingestion.scheduler import get_scheduler
+from app.ingestion.settlements import get_settlement_status, ingest_settlements
 from app.middleware.auth import TierInfo
-from app.models.db import Contract, RawCOTReport, RawSettlement
 from app.models.ingestion import (
     COTIngestionResult,
     IngestionSourceStatus,
     IngestionStatus,
-    IngestionTriggerResponse,
     SettlementIngestionResult,
 )
-from app.ingestion.cot import ingest_cot_reports, get_cot_status
-from app.ingestion.settlements import ingest_settlements, get_settlement_status
-from app.ingestion.scheduler import get_scheduler
 
 logger = structlog.get_logger(__name__)
 
@@ -79,7 +76,7 @@ async def trigger_cot_ingestion(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "ingestion_error", "message": f"COT ingestion failed: {str(e)}"},
-        )
+        ) from e
 
 
 @router.post("/settlements", response_model=SettlementIngestionResult)
@@ -140,7 +137,7 @@ async def trigger_settlement_ingestion(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "ingestion_error", "message": f"Settlement ingestion failed: {str(e)}"},
-        )
+        ) from e
 
 
 @router.get("/status", response_model=IngestionStatus)

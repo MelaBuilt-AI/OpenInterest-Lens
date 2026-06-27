@@ -5,8 +5,7 @@ Exposes data quality monitoring: staleness, gaps, completeness, overall health.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import date, datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -24,7 +23,7 @@ router = APIRouter(prefix="/quality", tags=["quality"])
 
 @router.get("")
 async def get_quality_report(
-    contract: Optional[str] = Query(None, description="Specific contract symbol. Omit for all contracts."),
+    contract: str | None = Query(None, description="Specific contract symbol. Omit for all contracts."),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
 ):
@@ -97,8 +96,8 @@ async def get_staleness(
 @router.get("/gaps")
 async def get_gaps(
     contract: str = Query(..., description="Contract symbol to check"),
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: str | None = Query(None, description="End date (YYYY-MM-DD)"),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
 ):
@@ -127,7 +126,7 @@ async def get_gaps(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"error": "invalid_date", "message": "start_date must be YYYY-MM-DD format."},
-            )
+            ) from None
     if end_date:
         try:
             end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -135,7 +134,7 @@ async def get_gaps(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"error": "invalid_date", "message": "end_date must be YYYY-MM-DD format."},
-            )
+            ) from None
 
     quality_service = get_data_quality_service()
     result = await quality_service.check_gaps(contract, start, end, db)

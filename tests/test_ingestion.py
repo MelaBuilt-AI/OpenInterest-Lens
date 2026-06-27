@@ -10,24 +10,21 @@ Tests cover:
 
 from __future__ import annotations
 
-import asyncio
-from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import date, datetime
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 import pytest_asyncio
+from app.database import Base, get_db
+from app.ingestion.cot import COTFetcher, store_cot_reports
+from app.ingestion.settlements import SettlementFetcher, store_settlements
+from app.models.db import Contract
+from app.models.ingestion import COTReportCreate, SettlementCreate
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.database import Base, get_db
-from app.models.db import Contract, RawCOTReport, RawSettlement
-from app.models.ingestion import COTReportCreate, SettlementCreate
-from app.ingestion.cot import COTFetcher, store_cot_reports, ingest_cot_reports
-from app.ingestion.settlements import SettlementFetcher, store_settlements, ingest_settlements
-
-from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO, TEST_API_KEY_ENTERPRISE
-
+from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -367,7 +364,6 @@ class TestSettlementFetcher:
         assert expiry.month == 3
         assert expiry.year == 2026
         # Should be a Friday (weekday 4)
-        import calendar
         assert expiry.weekday() == 4  # Friday
 
     def test_get_contract_expiry_cl(self):

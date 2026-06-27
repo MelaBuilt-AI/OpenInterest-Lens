@@ -6,8 +6,7 @@ date consistency, duplicate detection.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
-from typing import Optional
+from datetime import date
 
 import structlog
 
@@ -39,7 +38,7 @@ class ValidationError:
 class ValidationResult:
     """Aggregated validation result — valid flag plus list of errors."""
 
-    def __init__(self, errors: Optional[list[ValidationError]] = None) -> None:
+    def __init__(self, errors: list[ValidationError] | None = None) -> None:
         self.errors: list[ValidationError] = errors or []
 
     @property
@@ -88,13 +87,12 @@ def validate_cot_report(report: COTReportCreate) -> ValidationResult:
         )
 
     # Published date should be after as_of_date (usually Friday)
-    if report.published_date is not None:
-        if report.published_date < report.as_of_date:
-            result.add_error(
-                "published_date",
-                "Published date should be on or after the as_of_date",
-                report.published_date,
-            )
+    if report.published_date is not None and report.published_date < report.as_of_date:
+        result.add_error(
+            "published_date",
+            "Published date should be on or after the as_of_date",
+            report.published_date,
+        )
 
     # Net position consistency checks
     commercial_net_computed = report.commercial_long - report.commercial_short
@@ -202,13 +200,7 @@ def validate_settlement(settlement: SettlementCreate) -> ValidationResult:
 
     # Format 1: "Jun 26" or "Jun26" (3-letter month + space? + 2-digit year)
     import re
-    if re.match(r"^[A-Z][a-z]{2}\s*\d{2,4}$", mc):
-        valid = True
-    # Format 2: "H26" (single letter month code + 1-2 digit year)
-    elif re.match(r"^[FGHJKMNQUVXZ]\d{1,2}$", mc):
-        valid = True
-    # Format 3: "June 2026" — full month name + 4-digit year
-    elif re.match(r"^[A-Z][a-z]+\s+\d{4}$", mc):
+    if re.match(r"^[A-Z][a-z]{2}\s*\d{2,4}$", mc) or re.match(r"^[FGHJKMNQUVXZ]\d{1,2}$", mc) or re.match(r"^[A-Z][a-z]+\s+\d{4}$", mc):
         valid = True
 
     if not valid:
@@ -276,7 +268,7 @@ def detect_duplicate_settlement(
 # ---------------------------------------------------------------------------
 
 
-def check_cot_staleness(last_as_of_date: Optional[date], max_stale_days: int = 14) -> Optional[str]:
+def check_cot_staleness(last_as_of_date: date | None, max_stale_days: int = 14) -> str | None:
     """Check if the most recent COT data is too stale.
 
     Returns a warning message if stale, None if fresh.
@@ -291,7 +283,7 @@ def check_cot_staleness(last_as_of_date: Optional[date], max_stale_days: int = 1
     return None
 
 
-def check_settlement_staleness(last_settlement_date: Optional[date], max_stale_days: int = 3) -> Optional[str]:
+def check_settlement_staleness(last_settlement_date: date | None, max_stale_days: int = 3) -> str | None:
     """Check if the most recent settlement data is too stale.
 
     Returns a warning message if stale, None if fresh.

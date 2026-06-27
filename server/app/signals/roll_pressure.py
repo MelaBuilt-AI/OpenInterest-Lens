@@ -9,9 +9,7 @@ to the deferred contract.
 
 from __future__ import annotations
 
-import math
-from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, date, datetime, timedelta
 
 import structlog
 from sqlalchemy import select
@@ -23,16 +21,10 @@ from app.models.signal import (
     RollPressureIndex,
     RollPressureMetrics,
 )
-from app.signals.historical import percentile_rank, rolling_z_score
 from app.signals.roll_calendar import (
     ROLL_START_DAYS_BEFORE_EXPIRY,
-    calculate_expiry_date,
     calculate_roll_info,
-    classify_roll_urgency,
     estimate_oi_decay_rate,
-    estimate_roll_volume,
-    generate_month_code,
-    get_active_contract_months,
     parse_month_code,
 )
 
@@ -226,7 +218,7 @@ async def compute_roll_pressure(
 
     return RollPressureIndex(
         contract=contract_symbol,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         nearby=nearby_contract,
         deferred=deferred_contract,
         roll_pressure=roll_pressure_metrics,
@@ -275,10 +267,7 @@ def _compute_roll_pressure_score(
 
     # Factor 2: Spread basis magnitude
     # Normalized by the nearby price to get a percentage
-    if nearby_price > 0:
-        spread_pct = abs(spread_basis) / nearby_price * 100
-    else:
-        spread_pct = 0.0
+    spread_pct = abs(spread_basis) / nearby_price * 100 if nearby_price > 0 else 0.0
     # Map spread % to 0-100: 0.5% → 50, 1% → 75, 2%+ → 100
     spread_score = min(spread_pct * 100, 100)  # Linear scaling with cap
 
@@ -356,7 +345,7 @@ def analyze_historical_roll_pattern(
     # This is the "roll start" point
     nearby_dates = [d for d, _ in historical_oi_nearby]
     nearby_oi_values = [oi for _, oi in historical_oi_nearby]
-    deferred_oi_values = [oi for _, oi in historical_oi_deferred]
+    [oi for _, oi in historical_oi_deferred]
 
     # Find peak nearby OI (before decline)
     peak_oi_idx = nearby_oi_values.index(max(nearby_oi_values))
@@ -387,10 +376,7 @@ def analyze_historical_roll_pattern(
                 peak_decline_idx = i
 
     # OI shift percentage
-    if peak_oi > 0:
-        oi_shift_pct = ((peak_oi - nearby_oi_values[-1]) / peak_oi) * 100
-    else:
-        oi_shift_pct = 0.0
+    oi_shift_pct = (peak_oi - nearby_oi_values[-1]) / peak_oi * 100 if peak_oi > 0 else 0.0
 
     # Classify roll pattern
     if roll_duration_days <= 3:
@@ -517,7 +503,7 @@ def _find_settlement_by_month(
     settlements: list,
     target_month: str,
     target_date: date,
-) -> Optional["RawSettlement"]:
+) -> RawSettlement | None:
     """Find a settlement record for a specific month code on or near a target date.
 
     Tries exact month code match first, then partial matches.

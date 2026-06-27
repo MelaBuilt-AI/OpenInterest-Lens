@@ -7,13 +7,11 @@ in-memory for dev/testing.
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, field, asdict
-from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from dataclasses import asdict, dataclass
+from datetime import UTC, date, datetime, timedelta
 
 import structlog
-from sqlalchemy import func, select, and_
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db import Contract, RawCOTReport, RawSettlement
@@ -62,10 +60,10 @@ class StalenessCheck:
     source: str  # "cot" or "settlements"
     contract: str
     is_stale: bool
-    last_data_date: Optional[str]
-    days_since_last: Optional[int]
+    last_data_date: str | None
+    days_since_last: int | None
     threshold_days: int
-    warning: Optional[str] = None
+    warning: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -564,7 +562,7 @@ class DataQualityService:
     # -------------------------------------------------------------------
 
     async def get_quality_report(
-        self, db: AsyncSession, contract: Optional[str] = None
+        self, db: AsyncSession, contract: str | None = None
     ) -> DataQualityReport:
         """Generate a full data quality report.
 
@@ -590,7 +588,7 @@ class DataQualityService:
 
         if not contracts:
             return DataQualityReport(
-                generated_at=datetime.now(timezone.utc).isoformat(),
+                generated_at=datetime.now(UTC).isoformat(),
                 contracts=[],
                 cot_staleness=[],
                 settlement_staleness=[],
@@ -655,7 +653,7 @@ class DataQualityService:
             overall_health = "critical"
 
         return DataQualityReport(
-            generated_at=datetime.now(timezone.utc).isoformat(),
+            generated_at=datetime.now(UTC).isoformat(),
             contracts=[c.symbol for c in contracts],
             cot_staleness=cot_staleness,
             settlement_staleness=settlement_staleness,
@@ -672,7 +670,7 @@ class DataQualityService:
 # Singleton
 # ---------------------------------------------------------------------------
 
-_data_quality_service: Optional[DataQualityService] = None
+_data_quality_service: DataQualityService | None = None
 
 
 def get_data_quality_service() -> DataQualityService:

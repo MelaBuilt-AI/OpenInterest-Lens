@@ -8,7 +8,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import Settings, get_settings
+from app.config import get_settings
 from app.database import close_db, init_db
 from app.middleware.rate_limit import RateLimitHeadersMiddleware
 from app.middleware.request_size import RequestSizeLimitMiddleware
@@ -142,6 +142,7 @@ def create_app() -> FastAPI:
 
     # Landing page (served at /)
     from pathlib import Path as _Path
+
     from fastapi.responses import FileResponse
 
     _landing_dir = _Path(__file__).resolve().parent.parent.parent / "landing"

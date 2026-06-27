@@ -16,25 +16,13 @@ Tests cover:
 
 from __future__ import annotations
 
-import math
-from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from datetime import date, timedelta
 
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
-from app.database import Base, get_db
-from app.models.db import Contract, RawSettlement
 from app.models.signal import (
-    ContangoAlert,
-    CurveMetrics,
-    SpreadSummary,
-    TermStructureCurve,
     TermStructureMonth,
 )
+from app.services.signal_cache import reset_signal_cache
 from app.signals.curve_utils import (
     classify_curve,
     compute_annualized_yield,
@@ -48,14 +36,7 @@ from app.signals.curve_utils import (
     normalize_curve,
     polynomial_derivative,
 )
-from app.signals.term_structure import (
-    compute_calendar_spread_ratio,
-    compute_contango_backwardation,
-    compute_term_structure_slope,
-    generate_contango_alert,
-)
 from app.signals.roll_calendar import (
-    ROLL_START_DAYS_BEFORE_EXPIRY,
     calculate_expiry_date,
     calculate_roll_info,
     classify_roll_urgency,
@@ -65,10 +46,12 @@ from app.signals.roll_calendar import (
     get_active_contract_months,
     parse_month_code,
 )
-from app.services.signal_cache import reset_signal_cache
-
-from tests.conftest import TEST_API_KEY_FREE, TEST_API_KEY_PRO
-
+from app.signals.term_structure import (
+    compute_calendar_spread_ratio,
+    compute_contango_backwardation,
+    compute_term_structure_slope,
+    generate_contango_alert,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -164,7 +147,7 @@ class TestPolynomialFitting:
         coeffs = fit_polynomial(x, y, degree=1)
         assert len(coeffs) >= 2
         # Check that y = 3x + 2 fits well
-        for xi, yi in zip(x, y):
+        for xi, yi in zip(x, y, strict=False):
             predicted = evaluate_polynomial(coeffs, xi)
             assert abs(predicted - yi) < 0.1
 
@@ -175,7 +158,7 @@ class TestPolynomialFitting:
         coeffs = fit_polynomial(x, y, degree=2)
         # Check R-squared is close to 1
         ss_tot = sum((yi - sum(y) / len(y)) ** 2 for yi in y)
-        ss_res = sum((yi - evaluate_polynomial(coeffs, xi)) ** 2 for xi, yi in zip(x, y))
+        ss_res = sum((yi - evaluate_polynomial(coeffs, xi)) ** 2 for xi, yi in zip(x, y, strict=False))
         r_squared = 1 - ss_res / ss_tot if ss_tot > 0 else 0
         assert r_squared > 0.99
 
@@ -601,7 +584,7 @@ class TestContangoAlertGeneration:
             TermStructureMonth(month="Jun 26", expiry_date=date(2026, 6, 19), settlement=4500.0, open_interest=2000000, volume=1000000, spread_to_front=0.0, annualized_yield=0.0),
             TermStructureMonth(month="Sep 26", expiry_date=date(2026, 9, 19), settlement=4505.0, open_interest=1500000, volume=800000, spread_to_front=5.0, annualized_yield=0.0),
         ]
-        alert = generate_contango_alert(
+        generate_contango_alert(
             current_structure="contango",
             months=months,
             prior_structure="contango",

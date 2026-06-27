@@ -9,8 +9,7 @@ common patterns for other asset classes.
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, timedelta
-from typing import Optional
+from datetime import date, timedelta
 
 import structlog
 
@@ -309,7 +308,7 @@ def get_active_contract_months(contract_symbol: str) -> list[str]:
 def calculate_roll_info(
     contract_symbol: str,
     as_of_date: date,
-    nearby_month_code: Optional[str] = None,
+    nearby_month_code: str | None = None,
 ) -> RollInfo:
     """Calculate roll information for a contract as of a given date.
 
@@ -398,7 +397,7 @@ def _find_nearby_contract(
     for month in active_month_nums:
         expiry = calculate_expiry_date(year, month, contract_symbol)
         # Consider the roll start date, not just the expiry
-        roll_start = expiry - timedelta(days=roll_start_days)
+        expiry - timedelta(days=roll_start_days)
         if as_of_date < expiry:
             return (month, year)
 
@@ -540,7 +539,7 @@ def estimate_roll_volume(
     # After the roll window: ~10% of OI rolls (late rollers)
 
     roll_start_days = 5  # Standard assumption
-    total_oi = nearby_oi + deferred_oi
+    nearby_oi + deferred_oi
 
     if days_to_roll > 30:
         # Relaxed period: minimal rolling
@@ -649,7 +648,6 @@ def calculate_roll_date_proximity(
         }
 
     # Proximity score: exponential decay from 100 at expiry to 0 at 60 days out
-    max_distance = 60  # Beyond 60 days, proximity is effectively 0
     proximity_score = max(0.0, 100.0 * math.exp(-0.05 * days_to_roll))
 
     # Roll window classification

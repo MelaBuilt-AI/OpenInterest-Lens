@@ -2,12 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, Request, Response, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.config import Settings, get_settings
 from app.database import AsyncSession, get_db
 from app.middleware.auth import APIKeyAuth, TierInfo
-from app.middleware.rate_limit import check_rate_limit, is_rate_limited, TIER_RATE_LIMITS
+from app.middleware.rate_limit import check_rate_limit, is_rate_limited
 from app.middleware.security import get_endpoint_rate_limit
 
 _auth = APIKeyAuth()
@@ -55,7 +55,6 @@ async def require_api_key(
     endpoint_limit = get_endpoint_rate_limit(request.url.path, tier_info.tier)
     if endpoint_limit is not None and endpoint_limit < limit:
         # Use the more restrictive limit
-        endpoint_rate_key = f"rate_limit:{tier_info.user_id}:{tier_info.tier}:{request.url.path}"
         endpoint_remaining, endpoint_limit_val, endpoint_reset = await check_rate_limit(
             f"{tier_info.user_id}:{tier_info.tier}:{request.url.path}",
             endpoint_limit,

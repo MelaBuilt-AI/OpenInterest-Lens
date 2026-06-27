@@ -6,10 +6,9 @@ Request/response models for the term structure and roll pressure API endpoints.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Term Structure Request Models
@@ -19,21 +18,21 @@ from pydantic import BaseModel, Field
 class TermStructureRequest(BaseModel):
     """Request parameters for GET /v1/signals/term-structure."""
 
-    commodity: Optional[str] = Field(
+    commodity: str | None = Field(
         None,
         min_length=1,
         max_length=10,
         description="Root symbol, e.g. 'ES'. If None, computes for all tracked commodities.",
     )
-    date_range_start: Optional[date] = Field(
+    date_range_start: date | None = Field(
         None,
         description="Start date for term structure analysis (YYYY-MM-DD). Defaults to 30 days ago.",
     )
-    date_range_end: Optional[date] = Field(
+    date_range_end: date | None = Field(
         None,
         description="End date for term structure analysis (YYYY-MM-DD). Defaults to today.",
     )
-    contract_months: Optional[list[str]] = Field(
+    contract_months: list[str] | None = Field(
         None,
         description="Specific contract months to include (e.g., ['Jun 26', 'Sep 26']). If None, includes all available.",
     )
@@ -43,19 +42,19 @@ class TermStructureResponse(BaseModel):
     """Response envelope for term structure endpoint."""
 
     contract: str = Field(..., description="Root symbol, e.g. 'ES'")
-    term_structure: Optional["TermStructureCurveFromSignal"] = Field(
+    term_structure: TermStructureCurveFromSignal | None = Field(
         None, description="Computed term structure curve"
     )
-    contango_backwardation: Optional["ContangoBackwardationResult"] = Field(
+    contango_backwardation: ContangoBackwardationResult | None = Field(
         None, description="Contango/backwardation indicators"
     )
-    slope_metrics: Optional["SlopeMetricsResult"] = Field(
+    slope_metrics: SlopeMetricsResult | None = Field(
         None, description="Detailed slope metrics"
     )
-    calendar_spread_ratios: Optional["CalendarSpreadResult"] = Field(
+    calendar_spread_ratios: CalendarSpreadResult | None = Field(
         None, description="Calendar spread ratios"
     )
-    metadata: "TermStructureMetadata" = Field(
+    metadata: TermStructureMetadata = Field(
         ..., description="Computation metadata"
     )
 
@@ -66,7 +65,7 @@ class TermStructureCurveFromSignal(BaseModel):
     structure_type: Literal["contango", "backwardation", "flat", "mixed"] = Field(
         ..., description="Overall curve classification"
     )
-    months: list["TermStructureMonthData"] = Field(
+    months: list[TermStructureMonthData] = Field(
         ..., description="Per-month term structure data"
     )
     front_month_oi: int = Field(..., description="Front month open interest")
@@ -79,7 +78,7 @@ class TermStructureMonthData(BaseModel):
     """Single month entry in term structure response."""
 
     month: str = Field(..., description="Month code, e.g. 'Jun 26'")
-    expiry_date: Optional[date] = None
+    expiry_date: date | None = None
     settlement: float = Field(..., description="Settlement price")
     open_interest: int = Field(..., description="Open interest")
     volume: int = Field(..., description="Volume")
@@ -138,17 +137,17 @@ class TermStructureMetadata(BaseModel):
 class RollPressureRequest(BaseModel):
     """Request parameters for GET /v1/signals/roll-pressure."""
 
-    commodity: Optional[str] = Field(
+    commodity: str | None = Field(
         None,
         min_length=1,
         max_length=10,
         description="Root symbol, e.g. 'ES'. If None, computes for all tracked commodities.",
     )
-    date_range_start: Optional[date] = Field(
+    date_range_start: date | None = Field(
         None,
         description="Start date for lookback window (YYYY-MM-DD). Defaults to 30 days ago.",
     )
-    date_range_end: Optional[date] = Field(
+    date_range_end: date | None = Field(
         None,
         description="End date for lookback window (YYYY-MM-DD). Defaults to today.",
     )
@@ -164,16 +163,16 @@ class RollPressureResponse(BaseModel):
     """Response envelope for roll pressure endpoint."""
 
     contract: str = Field(..., description="Root symbol, e.g. 'ES'")
-    roll_pressure: Optional["RollPressureData"] = Field(
+    roll_pressure: RollPressureData | None = Field(
         None, description="Computed roll pressure metrics"
     )
-    roll_calendar: Optional["RollCalendarData"] = Field(
+    roll_calendar: RollCalendarData | None = Field(
         None, description="Roll calendar information"
     )
-    roll_impact: Optional["RollImpactData"] = Field(
+    roll_impact: RollImpactData | None = Field(
         None, description="Roll impact estimation"
     )
-    metadata: "RollPressureMetadata" = Field(
+    metadata: RollPressureMetadata = Field(
         ..., description="Computation metadata"
     )
 

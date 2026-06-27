@@ -6,10 +6,6 @@ OI-price correlation, and helper functions.
 
 from __future__ import annotations
 
-import math
-
-import pytest
-
 from app.signals.historical import (
     compute_lookback_window,
     compute_net_positions,
@@ -21,7 +17,6 @@ from app.signals.historical import (
     rolling_z_score,
     rolling_z_score_windowed,
 )
-
 
 # ---------------------------------------------------------------------------
 # Z-score tests
@@ -90,7 +85,6 @@ class TestRollingZScore:
     def test_z_score_symmetry(self):
         """Z-scores should be symmetric: z(x) = -z(reflection around mean)."""
         values = [10, 20, 30, 40, 50]
-        mean = 30
         z_above = rolling_z_score(40, values)
         z_below = rolling_z_score(20, values)
         assert abs(z_above + z_below) < 0.01  # Should be nearly opposite

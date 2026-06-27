@@ -5,7 +5,6 @@ Validates X-API-Key header, resolves tier, and enforces tier-based access.
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Literal, Optional
 
 import structlog
 from fastapi import HTTPException, status
@@ -72,10 +71,10 @@ _DEMO_KEYS = {
 class TierInfo:
     """Resolved tier information for an authenticated request."""
 
-    api_key_id: Optional[int]
+    api_key_id: int | None
     tier: str
     user_id: str
-    contracts_allowed: Optional[list] = None
+    contracts_allowed: list | None = None
     limits: dict = field(default_factory=dict)
 
     def can_access_contract(self, symbol: str) -> bool:

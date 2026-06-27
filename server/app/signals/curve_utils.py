@@ -7,9 +7,6 @@ All functions use pure Python (no numpy/scipy dependency) for portability.
 
 from __future__ import annotations
 
-import math
-from typing import Optional
-
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -62,7 +59,7 @@ def fit_polynomial(
     for j in range(m):
         for k in range(m):
             aug[j][k] = sum(x ** (j + k) for x in x_values)
-        aug[j][m] = sum((x ** j) * y for x, y in zip(x_values, y_values))
+        aug[j][m] = sum((x ** j) * y for x, y in zip(x_values, y_values, strict=False))
 
     # Gaussian elimination with partial pivoting
     for col in range(m):
@@ -294,7 +291,7 @@ def interpolate_missing_months(
             # Find nearest known month
             min_dist = float("inf")
             nearest_price = known_prices[0]
-            for ki, kp in zip(known_indices, known_prices):
+            for ki, kp in zip(known_indices, known_prices, strict=False):
                 dist = abs(ki - idx)
                 if dist < min_dist:
                     min_dist = dist
@@ -477,7 +474,7 @@ def fit_term_structure_curve(
     # Compute R-squared
     y_mean = sum(prices) / len(prices)
     ss_tot = sum((y - y_mean) ** 2 for y in prices)
-    ss_res = sum((y - evaluate_polynomial(coeffs, x)) ** 2 for x, y in zip(month_indices, prices))
+    ss_res = sum((y - evaluate_polynomial(coeffs, x)) ** 2 for x, y in zip(month_indices, prices, strict=False))
     r_squared = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
 
     # Compute slope (average of derivative across the curve)

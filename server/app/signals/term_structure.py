@@ -8,9 +8,7 @@ returns value, confidence, and metadata.
 
 from __future__ import annotations
 
-import math
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, date, datetime
 
 import structlog
 from sqlalchemy import select
@@ -20,33 +18,23 @@ from app.models.db import Contract, RawSettlement
 from app.models.signal import (
     ContangoAlert,
     CurveMetrics,
-    RollPressureIndex,
-    RollPressureMetrics,
     SpreadSummary,
     TermStructureCurve,
     TermStructureMonth,
 )
 from app.signals.curve_utils import (
-    classify_curve,
     compute_annualized_yield,
     compute_curve_slope,
     compute_spread_to_front,
     evaluate_polynomial,
     fit_polynomial,
     fit_term_structure_curve,
-    interpolate_missing_months,
 )
+from app.signals.historical import rolling_z_score
 from app.signals.roll_calendar import (
     calculate_expiry_date,
-    calculate_roll_info,
-    classify_roll_urgency,
-    estimate_oi_decay_rate,
-    estimate_roll_volume,
-    generate_month_code,
-    get_active_contract_months,
     parse_month_code,
 )
-from app.signals.historical import percentile_rank, rolling_z_score
 
 logger = structlog.get_logger(__name__)
 
@@ -81,7 +69,7 @@ MIN_OI_FOR_ANALYSIS = 100
 async def compute_term_structure(
     contract_symbol: str,
     db: AsyncSession,
-    as_of_date: Optional[date] = None,
+    as_of_date: date | None = None,
     lookback_days: int = 0,
 ) -> TermStructureCurve:
     """Compute the full term structure curve for a commodity.
@@ -170,7 +158,6 @@ async def compute_term_structure(
         )
 
     # Classify the curve
-    front_price = months_data[0].settlement
     month_indices = list(range(len(months_data)))
     prices = [m.settlement for m in months_data]
 
@@ -194,7 +181,7 @@ async def compute_term_structure(
     # Build the term structure response
     term_structure = TermStructureCurve(
         contract=contract_symbol.upper(),
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         as_of_date=as_of_date,
         structure_type=metrics["classification"],
         months=months_data,
@@ -205,7 +192,7 @@ async def compute_term_structure(
 
 
 def _build_term_structure_months(
-    month_settlements: dict[str, "RawSettlement"],
+    month_settlements: dict[str, RawSettlement],
     contract_symbol: str,
     as_of_date: date,
 ) -> list[TermStructureMonth]:
@@ -282,7 +269,7 @@ def _build_term_structure_months(
 
 def compute_contango_backwardation(
     months: list[TermStructureMonth],
-    historical_spreads: Optional[list[float]] = None,
+    historical_spreads: list[float] | None = None,
 ) -> dict:
     """Compute contango/backwardation indicators from term structure months.
 
@@ -333,10 +320,7 @@ def compute_contango_backwardation(
 
     # Determine structure type based on M1/M2 spread
     front_price = front.settlement
-    if front_price > 0:
-        spread_pct = abs(m1_m2_spread) / front_price
-    else:
-        spread_pct = 0.0
+    spread_pct = abs(m1_m2_spread) / front_price if front_price > 0 else 0.0
 
     if spread_pct < FLAT_THRESHOLD_PCT:
         structure_type = "flat"
@@ -440,8 +424,8 @@ def generate_contango_alert(
     months: list[TermStructureMonth],
     prior_structure: str,
     days_in_current_state: int,
-    historical_spreads: Optional[list[float]] = None,
-) -> Optional[ContangoAlert]:
+    historical_spreads: list[float] | None = None,
+) -> ContangoAlert | None:
     """Generate a contango/backwardation alert if conditions warrant.
 
     Alerts are generated for:
@@ -484,7 +468,7 @@ def generate_contango_alert(
     )
 
     # Determine alert type
-    alert_type: Optional[str] = None
+    alert_type: str | None = None
     severity = "info"
 
     # Transition alert
@@ -516,7 +500,7 @@ def generate_contango_alert(
 
     return ContangoAlert(
         contract=front.month,  # We'll override this with the actual symbol at the call site
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         structure=current_structure,
         alert_type=alert_type,
         spread_summary=SpreadSummary(
@@ -570,7 +554,7 @@ def compute_term_structure_slope(
     # Linear R²
     y_mean = sum(prices) / len(prices)
     ss_tot = sum((y - y_mean) ** 2 for y in prices)
-    ss_res = sum((y - evaluate_polynomial(linear_coeffs, x)) ** 2 for x, y in zip(month_indices, prices))
+    ss_res = sum((y - evaluate_polynomial(linear_coeffs, x)) ** 2 for x, y in zip(month_indices, prices, strict=False))
     r_squared_linear = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
 
     # Quadratic fit (if enough data)

@@ -9,10 +9,9 @@ Defines request/response schemas for:
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
-
 
 # ---------------------------------------------------------------------------
 # COT (Commitments of Traders) models
@@ -32,7 +31,7 @@ class COTReportCreate(BaseModel):
         description="Root symbol, e.g. 'ES'",
     )
     as_of_date: date = Field(..., description="Tuesday reference date for the COT report")
-    published_date: Optional[date] = Field(None, description="Friday date when the COT report was published")
+    published_date: date | None = Field(None, description="Friday date when the COT report was published")
     commercial_long: int = Field(..., description="Commercial hedgers long contracts")
     commercial_short: int = Field(..., description="Commercial hedgers short contracts")
     commercial_net: int = Field(..., description="Commercial net position (long - short)")
@@ -67,7 +66,7 @@ class COTReportResponse(BaseModel):
     id: int
     contract_symbol: str
     as_of_date: date
-    published_date: Optional[date]
+    published_date: date | None
     commercial_long: int
     commercial_short: int
     commercial_net: int
@@ -91,7 +90,7 @@ class COTIngestionResult(BaseModel):
     reports_skipped: int = Field(..., ge=0, description="Number of reports skipped (duplicates)")
     errors: list[str] = Field(default_factory=list, description="Error messages per failed row")
     contracts_processed: list[str] = Field(default_factory=list, description="Contract symbols processed")
-    as_of_date: Optional[date] = None
+    as_of_date: date | None = None
     fetched_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -155,7 +154,7 @@ class SettlementIngestionResult(BaseModel):
     settlements_skipped: int = Field(..., ge=0, description="Number of records skipped (duplicates)")
     errors: list[str] = Field(default_factory=list, description="Error messages per failed row")
     contracts_processed: list[str] = Field(default_factory=list, description="Contract symbols processed")
-    settlement_date: Optional[date] = None
+    settlement_date: date | None = None
     fetched_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -168,11 +167,11 @@ class IngestionSourceStatus(BaseModel):
     """Status of a single ingestion source."""
 
     source: Literal["cot", "settlements"]
-    last_run: Optional[datetime] = None
+    last_run: datetime | None = None
     last_status: Literal["success", "partial", "failed", "never_run"] = "never_run"
     last_records_ingested: int = 0
     last_errors: list[str] = Field(default_factory=list)
-    next_scheduled: Optional[datetime] = None
+    next_scheduled: datetime | None = None
 
 
 class IngestionStatus(BaseModel):
@@ -189,4 +188,4 @@ class IngestionTriggerResponse(BaseModel):
     triggered: bool = True
     source: Literal["cot", "settlements"]
     message: str
-    task_id: Optional[str] = None
+    task_id: str | None = None

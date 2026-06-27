@@ -9,8 +9,6 @@ for feeding into signal generators.
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, timedelta
-from typing import Optional
 
 import structlog
 
@@ -240,7 +238,7 @@ def compute_oi_price_correlation(
 def compute_week_over_week_changes(
     reports: list[dict],
     field: str = "net",
-) -> list[Optional[float]]:
+) -> list[float | None]:
     """Compute week-over-week changes for a given field from COT reports.
 
     Args:
@@ -254,7 +252,7 @@ def compute_week_over_week_changes(
     """
     if not reports:
         return []
-    changes: list[Optional[float]] = [None]
+    changes: list[float | None] = [None]
 
     for i in range(1, len(reports)):
         current = reports[i].get(field, 0) if isinstance(reports[i].get(field), (int, float)) else 0
