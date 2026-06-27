@@ -4,7 +4,8 @@ Defines all signal schemas: PositioningSignal, TermStructureCurve,
 RollPressureIndex, ContangoAlert, plus request/response wrappers.
 """
 
-from datetime import date, datetime
+from datetime import date as date_type
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -62,7 +63,7 @@ class PositioningSignal(BaseModel):
 
     contract: str = Field(..., description="Root symbol, e.g. 'ES'", examples=["ES", "NQ", "CL", "GC"])
     timestamp: datetime = Field(..., description="COT report reference date (Tuesday as-of)")
-    as_of_friday: date | None = Field(None, description="Date the COT report was published (Friday)")
+    as_of_friday: date_type | None = Field(None, description="Date the COT report was published (Friday)")
     net_position: NetPosition
     smart_money: SmartMoney
     retail: Retail
@@ -74,7 +75,7 @@ class TermStructureMonth(BaseModel):
     """Single month entry in a term structure curve."""
 
     month: str = Field(..., description="e.g. 'Jun 26'")
-    expiry_date: date | None = None
+    expiry_date: date_type | None = None
     settlement: float
     open_interest: int
     volume: int
@@ -97,7 +98,7 @@ class TermStructureCurve(BaseModel):
 
     contract: str
     timestamp: datetime
-    as_of_date: date
+    as_of_date: date_type
     structure_type: Literal["contango", "backwardation", "mixed", "flat"]
     months: list[TermStructureMonth]
     curve_metrics: CurveMetrics | None = None
@@ -176,7 +177,7 @@ class SignalsRequest(BaseModel):
 class TermStructureRequest(BaseModel):
     """Query parameters for GET /term-structure/{contract}."""
 
-    date: date | None = None
+    date: date_type | None = None
     include_history: bool = False
     days_back: int = Field(30, ge=1, le=365)
 
@@ -224,8 +225,8 @@ class COTTraderDetail(BaseModel):
 class COTReport(BaseModel):
     """Single COT report entry."""
 
-    as_of_date: date
-    published_date: date
+    as_of_date: date_type
+    published_date: date_type
     commercial: COTTraderDetail
     non_commercial: COTTraderDetail
     non_reportable: COTTraderDetail
@@ -289,11 +290,11 @@ class SignalRequest(BaseModel):
         max_length=10,
         description="Root symbol, e.g. 'ES'. If None, computes for all tracked commodities.",
     )
-    date_range_start: date | None = Field(
+    date_range_start: date_type | None = Field(
         None,
         description="Start date for lookback window (YYYY-MM-DD). Defaults to 52 weeks ago.",
     )
-    date_range_end: date | None = Field(
+    date_range_end: date_type | None = Field(
         None,
         description="End date for lookback window (YYYY-MM-DD). Defaults to today.",
     )
@@ -339,7 +340,7 @@ class SignalMetadata(BaseModel):
 
     lookback_weeks: int = Field(..., description="Number of weeks used for statistics")
     data_points: int = Field(..., description="Number of COT reports used in calculation")
-    as_of_date: date = Field(..., description="Most recent COT reference date used")
+    as_of_date: date_type = Field(..., description="Most recent COT reference date used")
     computed_at: datetime = Field(..., description="When this signal was computed")
     cache_hit: bool = Field(False, description="Whether the result was served from cache")
 
