@@ -45,10 +45,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/openinterest-lens/openinterest-lens"
-Documentation = "https://docs.openinterest.lens"
-Repository = "https://github.com/openinterest-lens/openinterest-lens"
-Issues = "https://github.com/openinterest-lens/openinterest-lens/issues"
+Homepage = "https://github.com/MelaBuilt-AI/OpenInterest-Lens"
+Documentation = "https://openinterestlens.melabuilt.ai"
+Repository = "https://github.com/MelaBuilt-AI/OpenInterest-Lens"
+Issues = "https://github.com/MelaBuilt-AI/OpenInterest-Lens/issues"
 
 [project.scripts]
 oil-admin = "admin.cli:cli"

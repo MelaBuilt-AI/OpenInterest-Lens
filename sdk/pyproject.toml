@@ -41,10 +41,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/openinterest-lens/openinterest-lens"
-Documentation = "https://docs.openinterestlens.com"
-Repository = "https://github.com/openinterest-lens/openinterest-lens"
-Changelog = "https://github.com/openinterest-lens/openinterest-lens/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/MelaBuilt-AI/OpenInterest-Lens"
+Documentation = "https://openinterestlens.melabuilt.ai"
+Repository = "https://github.com/MelaBuilt-AI/OpenInterest-Lens"
+Changelog = "https://github.com/MelaBuilt-AI/OpenInterest-Lens/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
