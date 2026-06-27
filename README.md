@@ -2,10 +2,22 @@
 
 > Real-time futures market structure API — OI + COT + term structure as developer-ready signals.
 
+[![CI](https://github.com/MelaBuilt-AI/OpenInterest-Lens/actions/workflows/ci.yml/badge.svg)](https://github.com/MelaBuilt-AI/OpenInterest-Lens/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/openinterest-lens.svg)](https://pypi.org/project/openinterest-lens/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests: 576](https://img.shields.io/badge/tests-576-brightgreen.svg)](#)
+
 ## Quick Start
 
 ### 1. Install
 
+**SDK only:**
+```bash
+pip install openinterest-lens
+```
+
+**Full server (dev mode):**
 ```bash
 cd openinterest-lens
 pip install -e "./server[dev]"
