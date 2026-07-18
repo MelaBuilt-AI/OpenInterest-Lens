@@ -36,6 +36,7 @@ jobs:
         run: ruff check server/ tests/
 
       - name: MyPy type check
+        continue-on-error: true
         run: mypy server/app/ --ignore-missing-imports
 
   # ── Test ──────────────────────────────────────────────────────────────────

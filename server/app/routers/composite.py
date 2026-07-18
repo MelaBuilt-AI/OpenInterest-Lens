@@ -39,7 +39,7 @@ async def get_composite_signal(
     roll_pressure_weight: float = Query(0.30, ge=0, le=1, description="Weight for roll pressure signal (0-1)"),
     tier_info: TierInfo = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
-):
+) -> CompositeSignalResponse:
     """Compute the composite market structure signal for a symbol.
 
     Combines positioning, term structure, and roll pressure signals into
