@@ -36,7 +36,7 @@ jobs:
         run: ruff check server/ tests/
 
       - name: MyPy type check
-        run: mypy server/app/ --ignore-missing-imports || true
+        run: mypy server/app/ --ignore-missing-imports
 
   # ── Test ──────────────────────────────────────────────────────────────────
   test:

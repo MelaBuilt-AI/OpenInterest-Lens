@@ -13,7 +13,7 @@ from app.database import close_db, init_db
 from app.middleware.rate_limit import RateLimitHeadersMiddleware
 from app.middleware.request_size import RequestSizeLimitMiddleware
 from app.monitoring.middleware import PrometheusMiddleware, add_metrics_endpoint
-from app.routers import api, contracts, examples, health, ingestion, quality, security, signals, term_structure, ws
+from app.routers import api, composite, contracts, examples, health, ingestion, quality, security, signals, term_structure, ws
 
 logger = structlog.get_logger(__name__)
 
@@ -135,6 +135,7 @@ def create_app() -> FastAPI:
     app.include_router(term_structure.router, prefix=settings.api_prefix)
     app.include_router(quality.router, prefix=settings.api_prefix)
     app.include_router(examples.router, prefix=settings.api_prefix)
+    app.include_router(composite.router, prefix=settings.api_prefix)
     app.include_router(security.router, prefix=settings.api_prefix)
 
     # WebSocket router (no prefix — handles its own /ws/v1/signals path)

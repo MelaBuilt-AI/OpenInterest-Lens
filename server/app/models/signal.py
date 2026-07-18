@@ -6,6 +6,7 @@ RollPressureIndex, ContangoAlert, plus request/response wrappers.
 
 from datetime import date as date_type
 from datetime import datetime
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -246,6 +247,58 @@ class RollPressureResponse(BaseModel):
     contract: str
     current: RollPressureIndex
     history: list[RollPressureIndex] | None = None
+
+
+class SignalAlignment(str, Enum):
+    """Alignment of the three component signals in the composite."""
+
+    ALIGNED_BULLISH = "ALIGNED_BULLISH"
+    ALIGNED_BEARISH = "ALIGNED_BEARISH"
+    MIXED = "MIXED"
+    NEUTRAL = "NEUTRAL"
+
+
+class SignalBreakdownItem(BaseModel):
+    """Individual signal's contribution to the composite score."""
+
+    signal_type: str = Field(..., description="Type of signal: positioning, term_structure, roll_pressure")
+    raw_value: float = Field(..., description="Raw signal value before normalization")
+    score: float = Field(..., description="Normalized score (-100 to +100)")
+    weight: float = Field(..., ge=0, le=1, description="Weight assigned to this signal")
+    contribution: float = Field(..., description="Score * weight (raw contribution to composite)")
+    contribution_pct: float = Field(..., ge=-100, le=100, description="Percentage of total absolute contribution")
+
+
+class HistoricalComparison(BaseModel):
+    """Comparison of current composite vs recent history."""
+
+    current: float = Field(..., description="Current composite score")
+    average: float = Field(..., description="Average composite over the lookback period")
+    min: float = Field(..., description="Minimum composite over the lookback period")
+    max: float = Field(..., description="Maximum composite over the lookback period")
+    percentile_rank: float = Field(..., ge=0, le=100, description="Percentile rank of current score in lookback window")
+    values: list[float] = Field(default_factory=list, description="Historical composite scores")
+
+
+class CompositeSignalResponse(BaseModel):
+    """Unified market structure composite signal response.
+
+    Combines positioning, term structure, and roll pressure signals
+    into one actionable market structure assessment.
+    """
+
+    contract: str = Field(..., description="Root symbol, e.g. 'ES'")
+    timestamp: datetime = Field(..., description="When this composite was computed")
+    positioning_score: float | None = Field(None, description="Positioning signal score (-100 to +100)")
+    term_structure_score: float | None = Field(None, description="Term structure signal score (-100 to +100)")
+    roll_pressure_score: float | None = Field(None, description="Roll pressure signal score (-100 to +100)")
+    composite_score: float = Field(..., description="Weighted composite score (-100 to +100)")
+    signal_alignment: SignalAlignment = Field(..., description="How aligned the three signals are")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence based on signal agreement (0-1)")
+    interpretation: str = Field(..., description="Human-readable interpretation of the composite score")
+    historical_comparison: HistoricalComparison | None = Field(None, description="How today's composite compares to the last 30 days")
+    weights: dict[str, float] = Field(..., description="Weight configuration used for the composite")
+    breakdown: list[SignalBreakdownItem] = Field(default_factory=list, description="Per-signal contribution breakdown")
 
 
 class ContractMetadata(BaseModel):
