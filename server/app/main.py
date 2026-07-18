@@ -13,7 +13,19 @@ from app.database import close_db, init_db
 from app.middleware.rate_limit import RateLimitHeadersMiddleware
 from app.middleware.request_size import RequestSizeLimitMiddleware
 from app.monitoring.middleware import PrometheusMiddleware, add_metrics_endpoint
-from app.routers import api, composite, contracts, examples, health, ingestion, quality, security, signals, term_structure, ws
+from app.routers import (
+    api,
+    composite,
+    contracts,
+    examples,
+    health,
+    ingestion,
+    quality,
+    security,
+    signals,
+    term_structure,
+    ws,
+)
 
 logger = structlog.get_logger(__name__)
 

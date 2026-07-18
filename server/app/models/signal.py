@@ -6,7 +6,7 @@ RollPressureIndex, ContangoAlert, plus request/response wrappers.
 
 from datetime import date as date_type
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -249,7 +249,7 @@ class RollPressureResponse(BaseModel):
     history: list[RollPressureIndex] | None = None
 
 
-class SignalAlignment(str, Enum):
+class SignalAlignment(StrEnum):
     """Alignment of the three component signals in the composite."""
 
     ALIGNED_BULLISH = "ALIGNED_BULLISH"

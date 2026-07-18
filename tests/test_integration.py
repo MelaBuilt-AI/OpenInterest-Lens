@@ -168,7 +168,8 @@ async def _seed_integration_data(session: AsyncSession) -> None:
         session.add(report)
 
     # Seed settlement data for ES (multiple months)
-    settlement_date = date(2026, 5, 13)
+    # Use a date within the last 30 days so it stays within the roll-pressure lookback window
+    settlement_date = date.today() - timedelta(days=7)
     months = [
         ("Jun 26", 5900.0, 1200000, 1500000),
         ("Sep 26", 5925.0, 800000, 900000),
@@ -187,6 +188,7 @@ async def _seed_integration_data(session: AsyncSession) -> None:
         session.add(settlement)
 
     # Seed settlement data for CL
+    # Uses same recent settlement_date as ES above
     cl_months = [
         ("Jun 26", 62.50, 300000, 400000),
         ("Jul 26", 62.30, 250000, 300000),
